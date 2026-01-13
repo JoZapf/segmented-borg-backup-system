@@ -128,20 +128,6 @@ backup-system/
 
 ---
 
-## 📈 Performance
-
-**Deduplication Efficiency:**
-- Original: 3.61 TB
-- Compressed: 254 GB (93% reduction)
-- Deduplicated: 70 GB (98.1% total reduction)
-
-**Incremental Backups:**
-- Daily incremental: ~5-10 MB written
-- Backup time: ~2 minutes (without verify)
-- Verify time: ~60 minutes (optional, full integrity check)
-
----
-
 ## 🔒 Security Features
 
 - ✅ Encrypted backups (Borg repokey BLAKE2b)
