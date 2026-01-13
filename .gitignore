@@ -1,0 +1,56 @@
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Backup files
+docs/backup-system-v2.0.0.zip
+docs/20260112_borg_nvme0n1_system_weekly_v1.sh
+*.bak
+*.backup
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+test-results/
+test-output/
+
+# Local configuration overrides (contain sensitive data)
+config/profiles/system.env
+config/profiles/data.env
+config/common.env
+config/local.env
+*.local.env
+
+# Sensitive files
+passphrase
+*.key
+*.pem
+*.cert
+
+# Build artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Runtime state
+.state/
+*.pid
+*.sock

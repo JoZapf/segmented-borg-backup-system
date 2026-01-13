@@ -1,0 +1,11 @@
+[Unit]
+Description=External Backup Drive Automount
+Documentation=man:systemd.automount(5)
+Before=mnt-extern_backup.mount
+
+[Automount]
+Where=/mnt/extern_backup
+TimeoutIdleSec=300
+
+[Install]
+WantedBy=multi-user.target

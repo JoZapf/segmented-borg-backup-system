@@ -1,0 +1,17 @@
+[Unit]
+Description=Weekly System Backup Timer
+Documentation=file:///opt/backup-system/docs/README.md
+Requires=backup-system@system.service
+
+[Timer]
+# Run every Sunday at 02:00
+OnCalendar=Sun *-*-* 02:00:00
+
+# If system was off, run 15 minutes after boot
+Persistent=true
+
+# Randomize start time by up to 15 minutes to avoid load spikes
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target

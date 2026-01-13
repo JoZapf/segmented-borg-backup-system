@@ -1,0 +1,13 @@
+[Unit]
+Description=External Backup Drive Mount
+Documentation=man:systemd.mount(5)
+After=blockdev@dev-disk-by\x2duuid-f2c4624a\x2d72ee\x2d5e4b\x2d85f8\x2da0d7f02e702f.target
+
+[Mount]
+What=/dev/disk/by-uuid/f2c4624a-72ee-5e4b-85f8-a0d7f02e702f
+Where=/mnt/extern_backup
+Type=ext4
+Options=defaults,noatime
+
+[Install]
+WantedBy=multi-user.target

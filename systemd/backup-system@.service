@@ -1,0 +1,30 @@
+[Unit]
+Description=Backup System (%i profile)
+Documentation=file:///opt/backup-system/docs/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/backup-system/main.sh %i
+User=root
+Group=root
+
+# Security hardening
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/mnt/extern_backup /var/log/extern_backup
+
+# Resource limits
+CPUQuota=80%
+MemoryMax=2G
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=backup-system-%i
+
+[Install]
+WantedBy=multi-user.target
