@@ -159,8 +159,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 - [BorgBackup](https://borgbackup.readthedocs.io/) - The excellent deduplicating backup program
-- [Shelly](https://www.shelly.com/) - Smart home IoT devices
-- Ubuntu Community - For the solid foundation
 
 ---
 
