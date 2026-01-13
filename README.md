@@ -6,7 +6,7 @@
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
 [![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
 
-Professional profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management.
+Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management.
 
 ---
 
@@ -164,24 +164,9 @@ backup-system/
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to:
-
-- 🐛 Report bugs
-- 💡 Suggest features
-- 📝 Improve documentation
-- 🔧 Submit pull requests
-
-See [SECURITY.md](docs/SECURITY.md) for guidelines on handling sensitive data.
-
----
-
 ## 📜 License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-**Copyright (c) 2026 Jo Zapf**
 
 ---
 
