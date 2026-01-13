@@ -2,7 +2,7 @@
 # segments/07_init_borg_repo.sh
 # @version 1.0.0
 # @description Initializes Borg repository if it doesn't exist
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires REPO, BORG_PASSPHRASE_FILE
 

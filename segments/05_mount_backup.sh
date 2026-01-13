@@ -2,7 +2,7 @@
 # segments/05_mount_backup.sh
 # @version 1.0.0
 # @description Idempotently mounts backup device via systemd automount
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires BACKUP_MNT, TARGET_DIR
 

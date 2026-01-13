@@ -2,7 +2,7 @@
 # segments/11_hdd_spindown.sh
 # @version 1.0.0
 # @description Parks HDD read/write heads and spins down drive before power-off
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires HDD_SPINDOWN_ENABLED, HDD_DEVICE
 

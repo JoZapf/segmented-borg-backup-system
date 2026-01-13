@@ -2,7 +2,7 @@
 # segments/01_validate_config.sh
 # @version 1.0.0
 # @description Validates all required configuration variables and dependencies
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires common.env, profile.env
 

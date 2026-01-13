@@ -2,7 +2,7 @@
 # segments/08_borg_backup.sh
 # @version 1.0.1
 # @description Creates Borg backup archive from configured sources
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-13 - Fixed: Disable set -e during borg execution to properly handle exit code 1 (warnings)
 # @requires All Borg configuration variables
 

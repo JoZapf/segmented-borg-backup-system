@@ -2,7 +2,7 @@
 # segments/06_validate_mount.sh
 # @version 1.0.1
 # @description Validates that correct UUID is mounted at backup location
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-13 - Fixed: Handle multiple mount entries by using only first line
 # @requires BACKUP_MNT, BACKUP_UUID
 

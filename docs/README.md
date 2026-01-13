@@ -1,6 +1,12 @@
-# Backup System v2.0.1
+# Segmented Borg Backup System
 
-Professional profile-based backup system for Ubuntu using BorgBackup with external HDD power management via Shelly Plug Plus.
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
+[![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
+[![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
+
+Professional profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management via Shelly Plug Plus.
 
 ## Features
 
@@ -179,10 +185,17 @@ OnCalendar=*-*-* 03:00:00
 - [TESTING.md](docs/TESTING.md) - Test results and validation evidence
 - [SECURITY.md](docs/SECURITY.md) - Security best practices and sensitive data handling
 
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+**Repository:** https://github.com/JoZapf/segmented-borg-backup-system
+
 ## License
 
-Created by Jo, 2026
-For personal and professional use
+MIT License - see [LICENSE](../LICENSE) file for details.
+
+Copyright (c) 2026 Jo Zapf
 
 ## Version History
 

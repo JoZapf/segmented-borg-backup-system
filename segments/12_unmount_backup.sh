@@ -2,7 +2,7 @@
 # segments/12_unmount_backup.sh
 # @version 1.0.0
 # @description Safely unmounts backup device after ensuring no open file handles
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires BACKUP_MNT
 

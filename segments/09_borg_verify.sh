@@ -2,7 +2,7 @@
 # segments/09_borg_verify.sh
 # @version 1.0.0
 # @description Verifies integrity of latest Borg backup archive
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires REPO, BORG_PASSPHRASE_FILE
 

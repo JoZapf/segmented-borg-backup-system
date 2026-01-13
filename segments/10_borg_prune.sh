@@ -2,7 +2,7 @@
 # segments/10_borg_prune.sh
 # @version 1.0.0
 # @description Prunes old archives according to retention policy and compacts repo
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires REPO, retention policy variables
 

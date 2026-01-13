@@ -2,7 +2,7 @@
 # main.sh
 # @version 2.0.1
 # @description Main orchestrator for profile-based backup system
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-13
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system

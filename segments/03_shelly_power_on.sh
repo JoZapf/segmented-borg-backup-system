@@ -2,7 +2,7 @@
 # segments/03_shelly_power_on.sh
 # @version 1.0.0
 # @description Powers on external HDD via Shelly Plug Plus with auto-off timer
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires SHELLY_ENABLED, SHELLY_IP, SHELLY_TOGGLE_AFTER_SEC
 

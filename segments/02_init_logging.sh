@@ -2,7 +2,7 @@
 # segments/02_init_logging.sh
 # @version 1.0.0
 # @description Initializes dual logging (local fallback + backup location)
-# @author Jo
+# @author Jo Zapf
 # @changed 2026-01-12
 # @requires common.env, LOCAL_LOG_DIR
 
