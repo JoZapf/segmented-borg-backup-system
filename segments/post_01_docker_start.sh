@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # segments/post_01_docker_start.sh
-# @version 1.0.0
-# @description Restarts Docker containers that were running before backup
+# @version 1.1.0
+# @description Restarts Docker containers that were running before backup (runs in POST_BACKUP phase)
 # @author Jo Zapf
-# @changed 2026-01-13
+# @changed 2026-01-14 - Now runs in POST_BACKUP phase (after backup, before verify) to minimize downtime
 # @requires DOCKER_ENABLED
 
 set -euo pipefail
 
 echo "[POST-01] Checking Docker container restart..."
+echo "[POST-01] Running in POST_BACKUP phase - containers restart BEFORE verify/prune"
 
 # Skip if Docker control is disabled
 if [ "${DOCKER_ENABLED:-false}" != "true" ]; then
@@ -119,7 +120,7 @@ if [ -f "${STATE_DIR}/docker_stop_timestamp.txt" ]; then
     downtime=$((start_epoch - stop_epoch))
     downtime_min=$((downtime / 60))
     downtime_sec=$((downtime % 60))
-    echo "[POST-01] Container downtime: ${downtime_min}m ${downtime_sec}s"
+    echo "[POST-01] ✅ Container downtime: ${downtime_min}m ${downtime_sec}s (verify/prune run with containers online!)"
   fi
 fi
 
