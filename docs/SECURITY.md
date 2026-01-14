@@ -97,7 +97,7 @@ When sharing logs, **redact** the following:
 # Replace real values with placeholders
 sed -i 's/f2c4624a-72ee-5e4b-85f8-a0d7f02e702f/REDACTED-UUID/g' logfile.txt
 sed -i 's/192\.168\.10\.164/192.168.X.X/g' logfile.txt
-sed -i 's/creaThink/HOSTNAME/g' logfile.txt
+sed -i 's/yourhostname/HOSTNAME/g' logfile.txt
 ```
 
 ---
@@ -166,7 +166,7 @@ Before going public with your backup system:
 - [ ] Verify `.gitignore` includes actual config files
 - [ ] Check no real UUIDs in committed files (`git grep "f2c4624a"`)
 - [ ] Check no real IPs in committed files (`git grep "192.168"`)
-- [ ] Check no hostnames in committed files (`git grep "creaThink"`)
+- [ ] Check no hostnames in committed files (`git grep "yourhostname"`
 - [ ] Borg passphrase backed up securely offline
 - [ ] Config files have 600 permissions
 - [ ] Example files contain only placeholders

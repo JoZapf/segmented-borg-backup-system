@@ -1,6 +1,6 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
@@ -12,8 +12,10 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 
 ## 🎯 Key Features
 
-- **🧩 Modular Architecture** - 13 independent, testable segments
+- **🧩 Modular Architecture** - 13 main + 3 PRE/POST segments, independently testable
 - **📋 Profile-Based** - Multiple backup configurations, one installation
+- **🐳 Docker Integration** - Automated container stop/start with state preservation
+- **🗄️ Database Automation** - Nextcloud DB dumps with maintenance mode & compression
 - **⚡ Hardware Integration** - Shelly Plug power management for external HDDs
 - **🔒 Safe HDD Shutdown** - Automatic head parking and spindown
 - **⏰ systemd Integration** - Scheduled backups with timer units
@@ -60,7 +62,8 @@ sudo /opt/backup-system/main.sh system
 ## 📚 Documentation
 
 - **[Full Documentation](docs/README.md)** - Complete feature overview
-- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions  
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
+- **[Docker & Nextcloud Backup](docs/DOCKER_NEXTCLOUD.md)** - Container & database backup guide
 - **[systemd Integration](docs/SYSTEMD.md)** - Timer configuration and troubleshooting
 - **[Testing Documentation](docs/TESTING.md)** - Test results and validation
 - **[Security Guide](docs/SECURITY.md)** - Security best practices
@@ -71,13 +74,14 @@ sudo /opt/backup-system/main.sh system
 
 ```
 backup-system/
-├── main.sh                    # Orchestrator
+├── main.sh                    # Orchestrator with PRE/POST support
 ├── config/
 │   ├── common.env.example     # Shared configuration template
 │   └── profiles/
-│       ├── system.env.example # System backup template
-│       └── data.env.example   # Data backup template
-├── segments/                  # 13 independent segments
+│       ├── system.env.example   # System backup template
+│       ├── data.env.example     # Data backup template
+│       └── dev-data.env.example # Docker/Nextcloud backup template
+├── segments/                  # 13 main + 3 PRE/POST segments
 │   ├── 01_validate_config.sh
 │   ├── 02_init_logging.sh
 │   ├── 03_shelly_power_on.sh
@@ -90,7 +94,10 @@ backup-system/
 │   ├── 10_borg_prune.sh
 │   ├── 11_hdd_spindown.sh
 │   ├── 12_unmount_backup.sh
-│   └── 13_shelly_power_off.sh
+│   ├── 13_shelly_power_off.sh
+│   ├── pre_01_nextcloud_db_dump.sh   # PRE: Nextcloud DB dump
+│   ├── pre_02_docker_stop.sh         # PRE: Docker stop
+│   └── post_01_docker_start.sh       # POST: Docker start
 └── systemd/                   # systemd integration
     ├── backup-system@.service
     ├── backup-system-daily.timer
@@ -104,6 +111,11 @@ backup-system/
 
 ### Backup Flow
 
+**PRE-BACKUP Phase** (Profile-specific, optional)
+- **Pre-01** Nextcloud DB dump with maintenance mode (if enabled)
+- **Pre-02** Docker container stop with state preservation (if enabled)
+
+**MAIN BACKUP Phase** (All profiles)
 1. **Validate** configuration and dependencies
 2. **Initialize** logging (local + backup location)
 3. **Power On** external HDD via Shelly Plug
@@ -117,6 +129,9 @@ backup-system/
 11. **Spindown** HDD (park heads safely)
 12. **Unmount** backup device
 13. **Power Off** HDD via Shelly Plug
+
+**POST-CLEANUP Phase** (Profile-specific, optional)
+- **Post-01** Docker container restart (if enabled)
 
 ### Why Segmented?
 

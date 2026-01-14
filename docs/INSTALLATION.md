@@ -369,10 +369,10 @@ sudo ./run_all_tests.sh system
 
 ```bash
 # List archives (after first successful backup)
-sudo borg list /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo
+sudo borg list /mnt/extern_backup/hostname_nvme0n1_System/borgrepo
 
 # List files in latest archive
-sudo borg list /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::your-archive-name
+sudo borg list /mnt/extern_backup/hostname_nvme0n1_System/borgrepo::your-archive-name
 ```
 
 ---

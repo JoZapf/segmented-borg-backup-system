@@ -1,6 +1,6 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
@@ -11,7 +11,9 @@ Professional profile-based backup orchestration for Ubuntu using BorgBackup with
 ## Features
 
 - **Profile-based configuration** - Multiple backup jobs with one installation
-- **13 independent segments** - Each segment is standalone and testable
+- **13 main + 3 PRE/POST segments** - Each segment is standalone and testable
+- **Docker & Nextcloud backup** - Automated DB dumps with maintenance mode
+- **Container management** - Graceful stop/start with state preservation
 - **Hardware power management** - Automatic HDD spin-up/down via Shelly Plug
 - **Safe HDD shutdown** - Parks read/write heads before power-off
 - **systemd integration** - Scheduled backups with timer units
@@ -23,13 +25,14 @@ Professional profile-based backup orchestration for Ubuntu using BorgBackup with
 
 ```
 backup-system/
-├── main.sh                    # Orchestrator (profile-based)
+├── main.sh                    # Orchestrator (profile-based + PRE/POST)
 ├── config/
 │   ├── common.env             # Shared configuration
 │   └── profiles/
 │       ├── system.env         # System backup profile
-│       └── data.env.example   # Template for additional profiles
-├── segments/                  # 13 independent segments
+│       ├── data.env.example   # Data backup template
+│       └── dev-data.env.example # Docker/Nextcloud template
+├── segments/                  # 13 main + 3 PRE/POST segments
 │   ├── 01_validate_config.sh
 │   ├── 02_init_logging.sh
 │   ├── 03_shelly_power_on.sh
@@ -42,7 +45,10 @@ backup-system/
 │   ├── 10_borg_prune.sh
 │   ├── 11_hdd_spindown.sh
 │   ├── 12_unmount_backup.sh
-│   └── 13_shelly_power_off.sh
+│   ├── 13_shelly_power_off.sh
+│   ├── pre_01_nextcloud_db_dump.sh  # PRE: DB dump
+│   ├── pre_02_docker_stop.sh        # PRE: Container stop
+│   └── post_01_docker_start.sh      # POST: Container start
 ├── tests/                     # Unit tests
 │   ├── run_all_tests.sh
 │   └── *.test.sh
@@ -180,10 +186,11 @@ OnCalendar=*-*-* 03:00:00
 
 ## Documentation
 
-- [INSTALLATION.md](docs/INSTALLATION.md) - Detailed installation instructions
-- [SYSTEMD.md](docs/SYSTEMD.md) - systemd configuration and troubleshooting
-- [TESTING.md](docs/TESTING.md) - Test results and validation evidence
-- [SECURITY.md](docs/SECURITY.md) - Security best practices and sensitive data handling
+- [INSTALLATION.md](INSTALLATION.md) - Detailed installation instructions
+- [DOCKER_NEXTCLOUD.md](DOCKER_NEXTCLOUD.md) - Docker & Nextcloud backup guide
+- [SYSTEMD.md](SYSTEMD.md) - systemd configuration and troubleshooting
+- [TESTING.md](TESTING.md) - Test results and validation evidence
+- [SECURITY.md](SECURITY.md) - Security best practices and sensitive data handling
 
 ## Contributing
 
@@ -198,6 +205,16 @@ MIT License - see [LICENSE](../LICENSE) file for details.
 Copyright (c) 2026 Jo Zapf
 
 ## Version History
+
+### v2.1.0 (2026-01-14)
+- **NEW:** Docker & Nextcloud backup with automated DB dumps
+- **NEW:** PRE/POST segment architecture for profile-specific actions
+- **NEW:** 3 new segments: pre_01, pre_02, post_01
+- **NEW:** dev-data profile for Docker environments
+- **BUGFIX:** Fixed pipefail issues in grep/while loops
+- DB dump: 629 MB → 102 MB compression (84%)
+- Docker: Graceful stop/start with state preservation
+- Container downtime: ~7-10 minutes per backup
 
 ### v2.0.1 (2026-01-13)
 - **CRITICAL BUGFIX:** Fixed exit code handling in segment 08

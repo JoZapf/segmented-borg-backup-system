@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-01-14
+
+### Added
+- **Docker & Nextcloud Backup Profile** - Complete automated Docker container backup solution
+  - Nextcloud database dump automation with maintenance mode
+  - Container-based mariadb-dump with integrity verification
+  - Automatic compression: 629 MB → 102 MB (84% compression ratio)
+  - Health checks: header/footer validation, error scanning
+  - Configurable cleanup: keeps last 7 dumps by default
+- **Docker Container Management**
+  - Graceful container stop with configurable timeout (default: 30s)
+  - State preservation: saves list of running containers
+  - Automatic restart in POST-cleanup phase
+  - Downtime tracking and logging
+  - Support for 16+ concurrent containers
+- **PRE/POST Segment Architecture** - Profile-specific execution phases
+  - PRE_BACKUP_SEGMENTS: Execute before main backup (e.g., DB dumps, container stops)
+  - POST_CLEANUP_SEGMENTS: Execute after cleanup (e.g., container restarts)
+  - Segments run even if main backup fails (via trap)
+  - main.sh v2.1.0: Enhanced orchestrator with phase support
+- **New Segments**
+  - `pre_01_nextcloud_db_dump.sh` - Nextcloud DB dump with maintenance mode
+  - `pre_02_docker_stop.sh` - Docker container graceful shutdown
+  - `post_01_docker_start.sh` - Docker container restart with verification
+- **dev-data Profile** - Pre-configured Docker backup profile
+  - Backs up `/mnt/docker-data` directory
+  - Nextcloud DB dumps stored in `TARGET_DIR/database-dumps/`
+  - Internal HDD support (no Shelly Plug required)
+  - 14 daily / 8 weekly / 12 monthly retention policy
+  - Example config: `config/profiles/dev-data.env.example`
+- **Documentation**
+  - `docs/DOCKER_NEXTCLOUD.md` - Complete Docker & Nextcloud backup guide
+  - Configuration examples with security best practices
+  - Troubleshooting section for common Docker issues
+  - Performance expectations and downtime estimates
+
+### Fixed
+- **CRITICAL:** Fixed `set -euo pipefail` issues in PRE/POST segments
+  - Issue: `grep | head` pipeline in pre_01 caused SIGPIPE abort
+  - Impact: Database dump compression never executed
+  - Fix: Added `|| true` to grep pipelines (line 194)
+  - Issue: `while` loops in pre_02/post_01 aborted after first iteration
+  - Impact: Only first Docker container stopped/started
+  - Fix: Wrapped loops with `set +eo pipefail` / `set -eo pipefail`
+  - All 16 containers now stop/start successfully
+
+### Changed
+- Enhanced main.sh v2.1.0 with PRE/POST segment support
+- Improved error handling in segment execution
+- Added profile-specific segment variables (PRE_BACKUP_SEGMENTS, POST_CLEANUP_SEGMENTS)
+- Docker stop/start segments preserve exact container states
+- STATE_DIR variable for persistent state storage (`/tmp/backup-system-state`)
+
+### Security
+- Database credentials stored in profile configs (600 permissions required)
+- Sensitive configs excluded from Git via .gitignore
+- DB dumps stored in backup target (not in production source)
+- Automatic cleanup prevents dump accumulation
+
+### Performance
+- First Docker backup: ~6.5 hours (1.76 TB → 1.09 TB deduplicated)
+- Incremental Docker backup: ~5-10 minutes (only changed data)
+- DB dump compression: 84% average (629 MB → 102 MB)
+- Container downtime: ~7-10 minutes per backup
+
 ## [2.0.1] - 2026-01-13
 
 ### Fixed
@@ -121,6 +186,7 @@ All notable changes to this project will be documented in this file.
 
 | Version | Date | Key Features |
 |---------|------|--------------|
+| 2.1.0 | 2026-01-14 | Docker/Nextcloud backup, PRE/POST segments |
 | 2.0.1 | 2026-01-13 | Bugfix: Exit code handling |
 | 2.0.0 | 2026-01-12 | Profile-based, modular, systemd, testing |
 | 1.0.0 | 2025-XX-XX | Initial monolithic implementation |
@@ -139,6 +205,20 @@ All notable changes to this project will be documented in this file.
 ---
 
 ## Upgrade Notes
+
+### From v2.0.1 to v2.1.0
+
+**Simple update - adds Docker/Nextcloud capabilities:**
+
+1. Update files:
+   - `main.sh` (v2.1.0 - PRE/POST support)
+   - `segments/pre_01_nextcloud_db_dump.sh` (new)
+   - `segments/pre_02_docker_stop.sh` (new)
+   - `segments/post_01_docker_start.sh` (new)
+   - `config/profiles/dev-data.env.example` (new)
+2. Existing profiles (system, data) remain unchanged
+3. Existing backups remain valid
+4. Docker backup is optional - use new dev-data profile
 
 ### From v2.0.0 to v2.0.1
 
