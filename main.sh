@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.0.1
+# @version 2.1.0
 # @description Main orchestrator for profile-based backup system
 # @author Jo Zapf
-# @changed 2026-01-13
+# @changed 2026-01-13 - Added support for profile-specific PRE_BACKUP_SEGMENTS and POST_CLEANUP_SEGMENTS
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
@@ -52,6 +52,10 @@ set +a
 # Segment Definitions
 # ============================================================================
 
+# Pre-backup segments (profile-specific, executed before main segments)
+# Can be overridden in profile config
+PRE_BACKUP_SEGMENTS=(${PRE_BACKUP_SEGMENTS[@]:-})
+
 # Main backup segments (executed in order)
 MAIN_SEGMENTS=(
   "01_validate_config.sh"
@@ -72,6 +76,10 @@ CLEANUP_SEGMENTS=(
   "12_unmount_backup.sh"
   "13_shelly_power_off.sh"
 )
+
+# Post-cleanup segments (profile-specific, executed after cleanup)
+# Can be overridden in profile config
+POST_CLEANUP_SEGMENTS=(${POST_CLEANUP_SEGMENTS[@]:-})
 
 # ============================================================================
 # Cleanup Handler
@@ -95,6 +103,23 @@ cleanup() {
       echo "[WARN] Cleanup segment not found or not executable: ${segment}"
     fi
   done
+  
+  # Execute post-cleanup segments (profile-specific)
+  if [ ${#POST_CLEANUP_SEGMENTS[@]} -gt 0 ]; then
+    echo ""
+    echo "==============================================================================="
+    echo "  POST-CLEANUP (Profile-Specific)"
+    echo "==============================================================================="
+    
+    for segment in "${POST_CLEANUP_SEGMENTS[@]}"; do
+      echo ""
+      if [ -x "${SEGMENTS_DIR}/${segment}" ]; then
+        "${SEGMENTS_DIR}/${segment}" || echo "[WARN] Post-cleanup segment ${segment} failed (continuing)"
+      else
+        echo "[WARN] Post-cleanup segment not found or not executable: ${segment}"
+      fi
+    done
+  fi
   
   echo ""
   echo "==============================================================================="
@@ -123,6 +148,34 @@ echo "Profile: ${PROFILE}"
 echo "Started: $(date -Iseconds)"
 echo "==============================================================================="
 echo ""
+
+# Execute pre-backup segments (profile-specific)
+if [ ${#PRE_BACKUP_SEGMENTS[@]} -gt 0 ]; then
+  echo "==============================================================================="
+  echo "  PRE-BACKUP (Profile-Specific)"
+  echo "==============================================================================="
+  
+  for segment in "${PRE_BACKUP_SEGMENTS[@]}"; do
+    echo ""
+    if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
+      echo "[ERROR] Pre-backup segment not found or not executable: ${segment}"
+      exit 1
+    fi
+    
+    if ! "${SEGMENTS_DIR}/${segment}"; then
+      echo ""
+      echo "[ERROR] Pre-backup segment failed: ${segment}"
+      echo "[ERROR] Aborting backup process"
+      exit 1
+    fi
+  done
+  
+  echo ""
+  echo "==============================================================================="
+  echo "  PRE-BACKUP COMPLETED"
+  echo "==============================================================================="
+  echo ""
+fi
 
 # Execute main segments
 for segment in "${MAIN_SEGMENTS[@]}"; do

@@ -34,6 +34,7 @@ test-output/
 # Local configuration overrides (contain sensitive data)
 config/profiles/system.env
 config/profiles/data.env
+config/profiles/dev-data.env
 config/common.env
 config/local.env
 *.local.env
