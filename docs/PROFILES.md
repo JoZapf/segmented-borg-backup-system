@@ -86,6 +86,67 @@ Profiles allow multiple backup configurations to coexist in a single installatio
 
 ---
 
+## Segment Architecture: MAIN vs. PRE/POST
+
+### Where Segments Are Defined
+
+**MAIN_SEGMENTS** - Defined in `main.sh` (universal)
+```bash
+# In /opt/backup-system/main.sh
+MAIN_SEGMENTS=(
+  "01_validate_config.sh"
+  "02_init_logging.sh"
+  "03_shelly_power_on.sh"
+  # ... segments 04-13
+)
+```
+→ Run for **ALL profiles** (system, data, dev-data)  
+→ Core backup logic (mount, backup, verify, unmount)  
+→ Cannot be customized per profile
+
+**PRE/POST_SEGMENTS** - Defined in `profile.env` (profile-specific)
+```bash
+# In /opt/backup-system/config/profiles/dev-data.env
+export PRE_BACKUP_SEGMENTS=(
+  "pre_01_nextcloud_db_dump.sh"
+  "pre_02_docker_stop.sh"
+)
+export POST_CLEANUP_SEGMENTS=(
+  "post_01_docker_start.sh"
+)
+```
+→ Run **ONLY for profiles that define them**  
+→ Custom actions (DB dumps, container management)  
+→ Completely optional
+
+### Execution Flow Example
+
+**Profile: system.env** (no PRE/POST)
+```
+1. MAIN_SEGMENTS (01-13)  ← Only these run
+```
+
+**Profile: dev-data.env** (with PRE/POST)
+```
+1. PRE_BACKUP_SEGMENTS    ← DB dump, Docker stop
+2. MAIN_SEGMENTS (01-13)  ← Standard backup
+3. POST_CLEANUP_SEGMENTS  ← Docker start
+```
+
+### Why Separate?
+
+**Problem if all in MAIN_SEGMENTS:**
+- System backup would try to dump Nextcloud DB (doesn't exist!)
+- Data backup would try to stop Docker (not installed!)
+- Every profile forced to handle all scenarios
+
+**Solution with PRE/POST:**
+- System profile: Clean, simple, just MAIN segments
+- Docker profile: Adds PRE/POST for container management
+- Future profiles: Can define own custom segments
+
+---
+
 ## Creating a New Profile
 
 ### 1. Copy Template

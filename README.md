@@ -140,6 +140,74 @@ backup-system/
 - ✅ **Debuggable** - Clear error location in logs
 - ✅ **Flexible** - Segments can be enabled/disabled
 - ✅ **Reusable** - Segments can be shared across profiles
+- ✅ **Profile-Specific** - PRE/POST segments run only for configured profiles
+
+### Segment Types: Universal vs. Profile-Specific
+
+**MAIN_SEGMENTS (Universal)** - Defined in `main.sh`  
+→ Run for **ALL profiles** (system, data, dev-data)  
+→ Core backup logic: mount, backup, verify, unmount  
+
+**PRE/POST_SEGMENTS (Profile-Specific)** - Defined in `profile.env`  
+→ Run **ONLY for profiles that define them**  
+→ Custom actions: DB dumps, container management, notifications  
+
+```
+Profile: system.env               Profile: dev-data.env
+┌─────────────────────┐          ┌─────────────────────────────────┐
+│ No PRE segments     │          │ PRE_BACKUP_SEGMENTS:            │
+└─────────────────────┘          │  - pre_01_nextcloud_db_dump.sh  │
+         ↓                       │  - pre_02_docker_stop.sh        │
+┌─────────────────────┐          └─────────────────────────────────┘
+│ MAIN_SEGMENTS       │                      ↓
+│  (01-13)            │◄─────────┌─────────────────────┐
+│ Same for all!       │          │ MAIN_SEGMENTS       │
+└─────────────────────┘          │  (01-13)            │
+         ↓                       │ Same for all!       │
+┌─────────────────────┐          └─────────────────────┘
+│ No POST segments    │                      ↓
+└─────────────────────┘          ┌─────────────────────────────────┐
+                                  │ POST_CLEANUP_SEGMENTS:          │
+                                  │  - post_01_docker_start.sh      │
+                                  └─────────────────────────────────┘
+```
+
+**Why separate?**  
+- System backup doesn't need Docker segments
+- Docker backup doesn't need Shelly Plug segments  
+- Each profile gets exactly what it needs
+
+---
+
+## 🔧 Orchestration
+
+The `main.sh` orchestrator dynamically executes segments based on profile configuration:
+
+```bash
+# 1. Source profile config
+source /opt/backup-system/config/profiles/${PROFILE}.env
+
+# 2. Run PRE-BACKUP segments (if defined in profile)
+if [ -n "${PRE_BACKUP_SEGMENTS:-}" ]; then
+  for segment in "${PRE_BACKUP_SEGMENTS[@]}"; do
+    execute_segment "$segment"
+  done
+fi
+
+# 3. Run MAIN segments (always, for all profiles)
+for segment in "${MAIN_SEGMENTS[@]}"; do
+  execute_segment "$segment"
+done
+
+# 4. Run POST-CLEANUP segments (if defined in profile)
+if [ -n "${POST_CLEANUP_SEGMENTS:-}" ]; then
+  for segment in "${POST_CLEANUP_SEGMENTS[@]}"; do
+    execute_segment "$segment"
+  done
+fi
+```
+
+**Result:** Profiles are modular and composable!
 
 ---
 

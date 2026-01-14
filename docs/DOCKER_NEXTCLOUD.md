@@ -18,6 +18,8 @@ The `dev-data` profile is designed for backing up Docker development environment
 
 ## Backup Flow
 
+**Important:** The dev-data profile defines PRE/POST segments that run **in addition to** the standard MAIN segments (01-13) that all profiles execute.
+
 ```
 ┌─────────────────────────────────────────────────┐
 │ PRE-BACKUP Phase                                │

@@ -11,9 +11,11 @@ Professional profile-based backup orchestration for Ubuntu using BorgBackup with
 ## Features
 
 - **Profile-based configuration** - Multiple backup jobs with one installation
-- **13 main + 3 PRE/POST segments** - Each segment is standalone and testable
+- **13 main + 3 PRE/POST segments** - Modular architecture with profile-specific customization
 - **Docker & Nextcloud backup** - Automated DB dumps with maintenance mode
 - **Container management** - Graceful stop/start with state preservation
+
+**Note:** MAIN segments (01-13) run for all profiles. PRE/POST segments are profile-specific and optional.
 - **Hardware power management** - Automatic HDD spin-up/down via Shelly Plug
 - **Safe HDD shutdown** - Parks read/write heads before power-off
 - **systemd integration** - Scheduled backups with timer units

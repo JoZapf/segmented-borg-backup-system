@@ -4,6 +4,49 @@
 
 The backup system is built from 16 independent segments (13 main + 3 PRE/POST). Each segment handles one specific task and can be tested individually.
 
+### Segment Types
+
+**MAIN_SEGMENTS (01-13)** - Universal segments defined in `main.sh`
+- Run for **ALL profiles** (system, data, dev-data)
+- Core backup logic shared across all backup jobs
+- Cannot be disabled per profile (part of core functionality)
+
+**PRE/POST_SEGMENTS** - Profile-specific segments defined in `profile.env`
+- Run **ONLY for profiles that explicitly define them**
+- Custom actions tailored to specific backup needs
+- Optional: profiles without PRE/POST segments skip these phases
+
+### Why Two Types?
+
+**Problem without separation:**
+```bash
+# If all segments were in MAIN_SEGMENTS:
+MAIN_SEGMENTS=(
+  "pre_01_nextcloud_db_dump.sh"  # ❌ Would fail for system.env (no Nextcloud!)
+  "pre_02_docker_stop.sh"        # ❌ Would fail for data.env (no Docker!)
+  "01_validate_config.sh"        # ✅ Works for all
+  # ...
+)
+```
+
+**Solution with separation:**
+```bash
+# system.env (System backup)
+# → No PRE/POST segments defined
+# → Only MAIN_SEGMENTS run
+
+# dev-data.env (Docker backup)
+export PRE_BACKUP_SEGMENTS=("pre_01_nextcloud_db_dump.sh" "pre_02_docker_stop.sh")
+export POST_CLEANUP_SEGMENTS=("post_01_docker_start.sh")
+# → PRE + MAIN + POST segments run
+```
+
+**Benefits:**
+- ✅ **Flexibility:** Each profile chooses its own PRE/POST segments
+- ✅ **Modularity:** New profiles can mix and match segments
+- ✅ **Safety:** System backup won't accidentally run Docker segments
+- ✅ **Reusability:** PRE/POST segments can be shared across profiles
+
 ---
 
 ## Segment Architecture
