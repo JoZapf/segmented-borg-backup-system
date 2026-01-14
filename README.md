@@ -116,7 +116,7 @@ backup-system/
 - **Pre-01** Nextcloud DB dump with maintenance mode (if enabled)
 - **Pre-02** Docker container stop with state preservation (if enabled)
 
-**MAIN BACKUP Phase** (All profiles)
+**MAIN BACKUP Phase - Part 1** (All profiles)
 1. **Validate** configuration and dependencies
 2. **Initialize** logging (local + backup location)
 3. **Power On** external HDD via Shelly Plug
@@ -125,14 +125,23 @@ backup-system/
 6. **Validate** correct UUID is mounted (safety check!)
 7. **Initialize** Borg repository (if needed)
 8. **Backup** configured sources with Borg
+
+**POST-BACKUP Phase** (Profile-specific, optional)
+- **Docker container restart** (if enabled) ← Services back online!
+- Time-critical cleanup runs here
+- **Container downtime: Only 7-10 minutes!**
+
+**MAIN BACKUP Phase - Part 2** (All profiles, services online!)
 9. **Verify** backup integrity (full data check)
 10. **Prune** old backups per retention policy
+
+**CLEANUP Phase** (All profiles)
 11. **Spindown** HDD (park heads safely)
 12. **Unmount** backup device
 13. **Power Off** HDD via Shelly Plug
 
 **POST-CLEANUP Phase** (Profile-specific, optional)
-- **Post-01** Docker container restart (if enabled)
+- Final notifications or logging
 
 ### Why Segmented?
 

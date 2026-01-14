@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.1.0
-# @description Main orchestrator for profile-based backup system
+# @version 2.2.0
+# @description Main orchestrator for profile-based backup system with POST_BACKUP_SEGMENTS support
 # @author Jo Zapf
-# @changed 2026-01-13 - Added support for profile-specific PRE_BACKUP_SEGMENTS and POST_CLEANUP_SEGMENTS
+# @changed 2026-01-14 - Added POST_BACKUP_SEGMENTS phase for time-critical cleanup (e.g., container restart)
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
@@ -56,8 +56,8 @@ set +a
 # Can be overridden in profile config
 PRE_BACKUP_SEGMENTS=(${PRE_BACKUP_SEGMENTS[@]:-})
 
-# Main backup segments (executed in order)
-MAIN_SEGMENTS=(
+# Main backup segments - Part 1 (up to and including backup creation)
+MAIN_SEGMENTS_PART1=(
   "01_validate_config.sh"
   "02_init_logging.sh"
   "03_shelly_power_on.sh"
@@ -66,6 +66,15 @@ MAIN_SEGMENTS=(
   "06_validate_mount.sh"
   "07_init_borg_repo.sh"
   "08_borg_backup.sh"
+)
+
+# Post-backup segments (profile-specific, executed after backup but before verify)
+# Use this for time-critical cleanup like restarting containers
+# Can be overridden in profile config
+POST_BACKUP_SEGMENTS=(${POST_BACKUP_SEGMENTS[@]:-})
+
+# Main backup segments - Part 2 (verify and prune - can run while services are back online)
+MAIN_SEGMENTS_PART2=(
   "09_borg_verify.sh"
   "10_borg_prune.sh"
 )
@@ -78,6 +87,7 @@ CLEANUP_SEGMENTS=(
 )
 
 # Post-cleanup segments (profile-specific, executed after cleanup)
+# Use this for final notifications or logging
 # Can be overridden in profile config
 POST_CLEANUP_SEGMENTS=(${POST_CLEANUP_SEGMENTS[@]:-})
 
@@ -177,8 +187,61 @@ if [ ${#PRE_BACKUP_SEGMENTS[@]} -gt 0 ]; then
   echo ""
 fi
 
-# Execute main segments
-for segment in "${MAIN_SEGMENTS[@]}"; do
+# Execute main segments - Part 1 (up to backup creation)
+for segment in "${MAIN_SEGMENTS_PART1[@]}"; do
+  echo ""
+  if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
+    echo "[ERROR] Segment not found or not executable: ${segment}"
+    exit 1
+  fi
+  
+  if ! "${SEGMENTS_DIR}/${segment}"; then
+    echo ""
+    echo "[ERROR] Segment failed: ${segment}"
+    echo "[ERROR] Aborting backup process"
+    exit 1
+  fi
+done
+
+echo ""
+echo "==============================================================================="
+echo "  BACKUP CREATED - EXECUTING POST-BACKUP CLEANUP"
+echo "==============================================================================="
+echo ""
+
+# Execute post-backup segments (profile-specific, after backup but before verify)
+if [ ${#POST_BACKUP_SEGMENTS[@]} -gt 0 ]; then
+  echo "==============================================================================="
+  echo "  POST-BACKUP (Profile-Specific)"
+  echo "==============================================================================="
+  
+  for segment in "${POST_BACKUP_SEGMENTS[@]}"; do
+    echo ""
+    if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
+      echo "[WARN] Post-backup segment not found or not executable: ${segment}"
+      echo "[WARN] Continuing with verification..."
+    else
+      if ! "${SEGMENTS_DIR}/${segment}"; then
+        echo ""
+        echo "[WARN] Post-backup segment failed: ${segment}"
+        echo "[WARN] Continuing with verification..."
+      fi
+    fi
+  done
+  
+  echo ""
+  echo "==============================================================================="
+  echo "  POST-BACKUP COMPLETED - SERVICES SHOULD BE ONLINE"
+  echo "==============================================================================="
+  echo ""
+fi
+
+# Execute main segments - Part 2 (verify and prune)
+echo "==============================================================================="
+echo "  VERIFICATION AND PRUNING"
+echo "==============================================================================="
+
+for segment in "${MAIN_SEGMENTS_PART2[@]}"; do
   echo ""
   if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
     echo "[ERROR] Segment not found or not executable: ${segment}"

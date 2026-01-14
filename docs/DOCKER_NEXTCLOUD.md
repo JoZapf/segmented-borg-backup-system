@@ -18,7 +18,7 @@ The `dev-data` profile is designed for backing up Docker development environment
 
 ## Backup Flow
 
-**Important:** The dev-data profile defines PRE/POST segments that run **in addition to** the standard MAIN segments (01-13) that all profiles execute.
+**Important:** The dev-data profile uses POST_BACKUP_SEGMENTS to minimize container downtime. Containers restart immediately after backup creation, BEFORE the lengthy verify process.
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -37,23 +37,49 @@ The `dev-data` profile is designed for backing up Docker development environment
 └─────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────┐
-│ MAIN BACKUP Phase                               │
+│ MAIN BACKUP Phase - Part 1                      │
 ├─────────────────────────────────────────────────┤
-│ 3-12. Standard Borg Backup                      │
-│    → Mount, validate, backup, verify, prune     │
-│    (Shelly power control DISABLED)              │
+│ 3-8. Backup Creation (~7-10 minutes)            │
+│    → Mount, validate, initialize repo, backup   │
 └─────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────┐
-│ POST-CLEANUP Phase                              │
+│ POST-BACKUP Phase (NEW! Minimizes downtime)     │
 ├─────────────────────────────────────────────────┤
-│ 13. Docker Container Start                      │
+│ 9. Docker Container Start                       │
 │    → Read saved container IDs                   │
 │    → Restart containers in same order           │
 │    → Verify all restarted                       │
-│    → Calculate downtime                         │
+│    → Calculate downtime (~7-10 min)             │
+│                                                  │
+│ ✅ CONTAINERS BACK ONLINE                        │
+│    Home Assistant and services running again!   │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ MAIN BACKUP Phase - Part 2 (Containers online!) │
+├─────────────────────────────────────────────────┤
+│ 10. Verify (~6-10 hours)                        │
+│     → Full data integrity check                 │
+│     → Containers keep running!                  │
+│                                                  │
+│ 11. Prune (~5 minutes)                          │
+│     → Remove old archives                       │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ CLEANUP Phase                                    │
+├─────────────────────────────────────────────────┤
+│ 12-14. Spindown, Unmount, Power-off            │
+│     (Shelly power control DISABLED)              │
 └─────────────────────────────────────────────────┘
 ```
+
+**Container Downtime:**
+- **Before (with old POST_CLEANUP):** 6-10 hours ❌
+- **Now (with POST_BACKUP):** 7-10 minutes ✅
+
+**Perfect for Home Assistant and time-critical services!**
 
 ---
 
@@ -283,16 +309,23 @@ cat /tmp/backup-system-state/running_containers.txt
 ```
 DB Dump:          30-60 seconds
 Container Stop:   10-20 seconds
-Backup (1st):     10-15 minutes (full)
-Backup (incremental): 1-2 minutes
-Verify:           45-60 minutes (optional)
+Backup (1st):     7-10 minutes (full backup, ~1.76 TB)
+Backup (incremental): 5-10 minutes (only changes)
+
+--- CONTAINERS RESTART HERE (POST_BACKUP phase) ---
+
+Verify:           6-10 hours (runs with containers online!)
+Prune:            3-5 minutes
 Container Start:  10-20 seconds
 
-Total Downtime (without verify): 2-3 minutes
-Total Downtime (with verify):    46-61 minutes
+Total Container Downtime: 8-12 minutes ✅
+Total Backup Duration: 6-10 hours (but services online!)
 ```
 
-**Recommendation:** Disable segment 09 (verify) for daily backups to minimize downtime.
+**Recommendation:** 
+- Keep verify enabled! Containers run during verification.
+- Home Assistant offline: Only 8-12 minutes
+- Perfect for production Home Lab environments
 
 ---
 
