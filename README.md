@@ -5,6 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
 [![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
+[![Security](https://img.shields.io/badge/security-secrets%20management-orange.svg)](docs/SECURITY.md)
 
 Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management.
 
@@ -213,12 +214,66 @@ fi
 
 ## 🔒 Security Features
 
+### Encryption & Safety
 - ✅ Encrypted backups (Borg repokey BLAKE2b)
 - ✅ UUID validation prevents wrong disk writes
 - ✅ Safe HDD head parking before power-off
-- ✅ Config files excluded from Git (.gitignore)
 - ✅ Comprehensive error handling
 - ✅ Dual logging for audit trail
+
+### 🔐 Secrets Management
+
+**Protected Configuration Files:**
+```bash
+# Never committed to Git (protected by .gitignore)
+config/common.env           # Shelly Plug IP, shared settings
+config/profiles/system.env  # System backup credentials, UUIDs
+config/profiles/data.env    # Data backup credentials, UUIDs
+config/profiles/dev-data.env # Docker credentials, DB passwords, UUIDs
+/root/.config/borg/passphrase # Borg encryption passphrase
+```
+
+**Template Files (Safe to share):**
+```bash
+# Committed to Git with placeholder values
+config/common.env.example
+config/profiles/system.env.example
+config/profiles/data.env.example
+config/profiles/dev-data.env.example
+```
+
+**Security Best Practices:**
+
+1. **File Permissions** - All config files must be `600` (root only)
+   ```bash
+   sudo chmod 600 /opt/backup-system/config/common.env
+   sudo chmod 600 /opt/backup-system/config/profiles/*.env
+   sudo chmod 600 /root/.config/borg/passphrase
+   ```
+
+2. **Borg Passphrase** - Store separately and back up securely
+   - Password manager (LastPass, 1Password, Bitwarden)
+   - Encrypted USB drive in safe
+   - Paper backup in secure location
+   - **Critical:** Without passphrase, backups are unrecoverable!
+
+3. **Sensitive Data in Configs**
+   - Database passwords (Nextcloud, MariaDB, PostgreSQL)
+   - Device UUIDs (backup HDD identifiers)
+   - IP addresses (Shelly Plug, internal network)
+   - Hostnames (system identifiers)
+
+4. **Git Safety** - `.gitignore` protects:
+   ```
+   config/common.env
+   config/profiles/*.env
+   !config/profiles/*.example
+   /root/.config/borg/passphrase
+   *.key
+   *.pem
+   ```
+
+**See [Security Guide](docs/SECURITY.md) for complete security documentation.**
 
 ---
 
