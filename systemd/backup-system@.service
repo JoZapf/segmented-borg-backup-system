@@ -6,7 +6,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/backup-system/main.sh %i
+ExecStart=/opt/backup-system/run-backup.sh %i
 User=root
 Group=root
 
@@ -15,7 +15,7 @@ NoNewPrivileges=false
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=false
-ReadWritePaths=/mnt/extern_backup /var/log/extern_backup
+ReadWritePaths=/mnt/extern_backup /var/log/extern_backup /mnt/system_backup
 
 # Resource limits
 CPUQuota=80%

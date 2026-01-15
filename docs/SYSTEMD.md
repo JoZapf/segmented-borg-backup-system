@@ -1,655 +1,257 @@
-# systemd Guide - Backup System v2.0.1
+# Systemd Integration Guide
 
-Complete guide for systemd integration, scheduling, and troubleshooting.
+## Overview
 
-## systemd Units Overview
+This backup system integrates with systemd for automated scheduling and mount management.
 
-The backup system uses four systemd units:
+## Components
 
-1. **mnt-extern_backup.mount** - Mounts the backup device
-2. **mnt-extern_backup.automount** - Automatic mount on access
-3. **backup-system@.service** - Parametric service for backup profiles
-4. **backup-system-weekly.timer** - Weekly schedule for system backup
+### 1. Systemd Timers
 
----
+Located in `/systemd/`:
+- `backup-system@.service` - Template service for running backups
+- `backup-system-weekly.timer` - Weekly system backup (Sunday 02:00)
+- `backup-system-dev-data-daily.timer` - Daily Docker/Nextcloud backup (00:00)
 
-## Mount Units
+### 2. Mount Configuration
 
-### mnt-extern_backup.mount
+**IMPORTANT:** Mounts are configured in `/etc/fstab`, NOT as separate systemd units.
 
-Handles the actual mounting of the backup device.
+## Installation
 
-```ini
-[Unit]
-Description=External Backup Drive Mount
-After=blockdev@dev-disk-by\x2duuid-f2c4624a\x2d72ee\x2d5e4b\x2d85f8\x2da0d7f02e702f.target
-
-[Mount]
-What=/dev/disk/by-uuid/f2c4624a-72ee-5e4b-85f8-a0d7f02e702f
-Where=/mnt/extern_backup
-Type=ext4
-Options=defaults,noatime
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Key points:**
-- Uses UUID to identify correct device
-- `noatime` reduces write operations to extend HDD life
-- Only mounts when explicitly triggered (by automount or manual command)
-
-### mnt-extern_backup.automount
-
-Triggers mount automatically when `/mnt/extern_backup` is accessed.
-
-```ini
-[Unit]
-Description=External Backup Drive Automount
-Before=mnt-extern_backup.mount
-
-[Automount]
-Where=/mnt/extern_backup
-TimeoutIdleSec=300
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Key points:**
-- `TimeoutIdleSec=300` - Unmounts after 5 minutes of inactivity
-- Triggered by any access to `/mnt/extern_backup`
-- Perfect for backup scripts that power on HDD dynamically
-
-### Commands
+### 1. Install Timer Units
 
 ```bash
-# Status
-systemctl status mnt-extern_backup.automount
-systemctl status mnt-extern_backup.mount
-
-# Start/Stop
-sudo systemctl start mnt-extern_backup.automount
-sudo systemctl stop mnt-extern_backup.automount
-
-# Enable/Disable (persistence across reboots)
-sudo systemctl enable mnt-extern_backup.automount
-sudo systemctl disable mnt-extern_backup.automount
-
-# Check if mounted
-findmnt /mnt/extern_backup
-
-# Manual mount (bypasses automount)
-sudo systemctl start mnt-extern_backup.mount
+cd /opt/backup-system/systemd
+sudo ./install-systemd-units.sh
 ```
 
----
+### 2. Configure Mount in fstab
 
-## Backup Service
+Edit `/etc/fstab` and add entries for your backup devices:
 
-### backup-system@.service
+#### Example: External Backup HDD (via Shelly Plug)
 
-Parametric service that accepts profile name as parameter.
-
-```ini
-[Unit]
-Description=Backup System (%i profile)
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/opt/backup-system/main.sh %i
-User=root
-Group=root
-
-# Security hardening
-NoNewPrivileges=false
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=false
-ReadWritePaths=/mnt/extern_backup /var/log/extern_backup
-
-# Resource limits
-CPUQuota=80%
-MemoryMax=2G
-
-# Logging
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=backup-system-%i
-
-[Install]
-WantedBy=multi-user.target
+```fstab
+# External Backup HDD (Shelly-controlled, automount on access)
+UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f  /mnt/extern_backup  ext4  \
+  defaults,nofail,acl,x-systemd.automount,\
+  x-systemd.device-timeout=30,x-systemd.idle-timeout=300  0  2
 ```
 
-**Key features:**
-- `%i` = profile name (e.g., "system", "data")
-- `Type=oneshot` - Runs once and exits
-- Resource limits prevent backup from overwhelming system
-- Security hardening restricts file system access
+#### Example: Internal Backup HDD (always powered)
 
-### Commands
+```fstab
+# Internal Backup HDD (automount on access)
+UUID=9d5bdf3a-ede2-472e-a463-741836755d1b  /mnt/system_backup  ext4  \
+  defaults,nofail,acl,x-systemd.automount,\
+  x-systemd.device-timeout=30,x-systemd.idle-timeout=300  0  2
+```
+
+### 3. Apply Changes
 
 ```bash
-# Run backup manually
+# Reload systemd to recognize fstab changes
+sudo systemctl daemon-reload
+
+# Verify automount units were created
+systemctl list-unit-files | grep "mnt-.*\.automount"
+
+# Expected output:
+# mnt-extern_backup.automount    generated  enabled
+# mnt-system_backup.automount    generated  enabled
+```
+
+## Mount Configuration Options
+
+### fstab Options Explained
+
+- `defaults` - Standard mount options (rw, suid, dev, exec, auto, nouser, async)
+- `nofail` - Boot continues even if device is not present
+- `acl` - Enable POSIX Access Control Lists
+- `x-systemd.automount` - Create systemd automount unit
+- `x-systemd.device-timeout=30` - Wait max 30s for device
+- `x-systemd.idle-timeout=300` - Unmount after 300s idle (optional)
+
+### Why fstab Instead of Systemd Units?
+
+**Advantages:**
+1. **Single source of truth** - One configuration file
+2. **Automatic systemd integration** - `x-systemd.automount` generates mount units
+3. **Standard approach** - Works with all Linux tools
+4. **Less maintenance** - No duplicate configurations
+
+**What NOT to do:**
+- ❌ Don't create manual `/etc/systemd/system/mnt-*.mount` files
+- ❌ Don't mix fstab and systemd units for the same mount
+- ❌ Don't use explicit `mount` commands in segments
+
+## Timer Management
+
+### List Active Timers
+
+```bash
+systemctl list-timers | grep backup-system
+```
+
+Example output:
+```
+NEXT                        LEFT       UNIT
+Fri 2026-01-16 00:00:00 CET 13h left  backup-system-dev-data-daily.timer
+Sun 2026-01-19 02:00:00 CET 4d left   backup-system-weekly.timer
+```
+
+### Enable/Disable Timers
+
+```bash
+# Enable
+sudo systemctl enable backup-system-dev-data-daily.timer
+sudo systemctl start backup-system-dev-data-daily.timer
+
+# Disable
+sudo systemctl stop backup-system-dev-data-daily.timer
+sudo systemctl disable backup-system-dev-data-daily.timer
+```
+
+### Customize Timer Schedule
+
+```bash
+# Edit timer
+sudo systemctl edit backup-system-dev-data-daily.timer
+```
+
+Add override:
+```ini
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* 02:00:00
+```
+
+## Manual Backup Execution
+
+```bash
+# Run backup for specific profile
 sudo systemctl start backup-system@system.service
-sudo systemctl start backup-system@data.service
+sudo systemctl start backup-system@dev-data.service
 
-# View status
-systemctl status backup-system@system.service
-
-# View logs (recent)
-journalctl -u backup-system@system.service -n 100
-
-# View logs (live)
+# Monitor execution
 journalctl -u backup-system@system.service -f
-
-# View logs (since date)
-journalctl -u backup-system@system.service --since "2026-01-01"
-
-# View only errors
-journalctl -u backup-system@system.service -p err
-
-# Export logs
-journalctl -u backup-system@system.service > backup-logs.txt
 ```
 
----
-
-## Timer Units
-
-### backup-system-weekly.timer
-
-Schedules system backup every Sunday at 02:00.
-
-```ini
-[Unit]
-Description=Weekly System Backup Timer
-Requires=backup-system@system.service
-
-[Timer]
-OnCalendar=Sun *-*-* 02:00:00
-Persistent=true
-RandomizedDelaySec=15min
-
-[Install]
-WantedBy=timers.target
-```
-
-**Key features:**
-- `Persistent=true` - Runs missed backups after system boot
-- `RandomizedDelaySec=15min` - Random 0-15min delay to avoid load spikes
-- Tied to `backup-system@system.service`
-
-### Timer Commands
-
-```bash
-# Enable timer
-sudo systemctl enable backup-system-weekly.timer
-sudo systemctl start backup-system-weekly.timer
-
-# Disable timer
-sudo systemctl disable backup-system-weekly.timer
-sudo systemctl stop backup-system-weekly.timer
-
-# List all timers
-systemctl list-timers
-
-# List specific timer
-systemctl list-timers backup-system-weekly.timer
-
-# Force trigger now (don't wait for schedule)
-sudo systemctl start backup-system@system.service
-```
-
-### Customizing Schedule
-
-#### Edit Timer
-
-```bash
-sudo systemctl edit backup-system-weekly.timer
-```
-
-This creates override file: `/etc/systemd/system/backup-system-weekly.timer.d/override.conf`
-
-#### Example: Change to Daily 03:00
-
-```ini
-[Timer]
-OnCalendar=
-OnCalendar=*-*-* 03:00:00
-```
-
-**Important:** Empty `OnCalendar=` first to clear default!
-
-#### Example: Change to Every 6 Hours
-
-```ini
-[Timer]
-OnCalendar=
-OnCalendar=*-*-* 00,06,12,18:00:00
-```
-
-#### Example: First Monday of Month
-
-```ini
-[Timer]
-OnCalendar=
-OnCalendar=Mon *-*-01..07 02:00:00
-```
-
-#### Example: Weekdays Only
-
-```ini
-[Timer]
-OnCalendar=
-OnCalendar=Mon,Tue,Wed,Thu,Fri *-*-* 02:00:00
-```
-
-#### Apply Changes
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart backup-system-weekly.timer
-systemctl list-timers backup-system-weekly.timer
-```
-
----
-
-## Creating Additional Timers
-
-### Daily Data Backup Timer
-
-Create file: `/etc/systemd/system/backup-data-daily.timer`
-
-```ini
-[Unit]
-Description=Daily Data Backup Timer
-Requires=backup-system@data.service
-
-[Timer]
-OnCalendar=*-*-* 03:00:00
-Persistent=true
-RandomizedDelaySec=10min
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable backup-data-daily.timer
-sudo systemctl start backup-data-daily.timer
-systemctl list-timers backup-data-daily.timer
-```
-
----
-
-## Email Notifications
-
-### Setup (Using mail command)
-
-Install mail utilities:
-```bash
-sudo apt install mailutils postfix
-```
-
-### Create Notification Service
-
-Create: `/etc/systemd/system/backup-notify@.service`
-
-```ini
-[Unit]
-Description=Backup Notification (%i)
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -c 'echo "Backup %i completed at $(date)" | mail -s "Backup %i: $SERVICE_RESULT" your-email@example.com'
-```
-
-### Link to Backup Service
-
-```bash
-sudo systemctl edit backup-system@system.service
-```
-
-Add:
-```ini
-[Unit]
-OnSuccess=backup-notify@system.service
-OnFailure=backup-notify@system.service
-```
-
-Reload:
-```bash
-sudo systemctl daemon-reload
-```
-
-### Test
-
-```bash
-sudo systemctl start backup-system@system.service
-# Check email
-```
-
----
-
-## Monitoring and Logging
+## Troubleshooting
 
 ### Check Timer Status
 
 ```bash
-# List all timers
-systemctl list-timers --all
-
-# Check specific timer
-systemctl status backup-system-weekly.timer
-
-# View next scheduled run
-systemctl list-timers backup-system-weekly.timer | grep backup
+systemctl status backup-system-dev-data-daily.timer
 ```
 
-### View Service Logs
+### Check Last Backup Execution
 
 ```bash
-# Recent logs
-journalctl -u backup-system@system.service -n 50
-
-# Logs from last boot
-journalctl -u backup-system@system.service -b
-
-# Logs from specific date range
-journalctl -u backup-system@system.service --since "2026-01-10" --until "2026-01-12"
-
-# Follow logs live
-journalctl -u backup-system@system.service -f
-
-# Only show errors
-journalctl -u backup-system@system.service -p err
-
-# Export to file
-journalctl -u backup-system@system.service --since "2026-01-01" > backup-logs.txt
+journalctl -u backup-system@dev-data.service --since today
 ```
 
-### Local Log Files
-
-systemd journal is complemented by local log files:
+### Verify Mount Configuration
 
 ```bash
-# List log files
-ls -la /var/log/extern_backup/
-
-# View specific log
-cat /var/log/extern_backup/system_2026-01-12_020000.log
-
-# View latest log
-tail -f /var/log/extern_backup/system_*.log
-```
-
----
-
-## Troubleshooting
-
-### Timer Not Triggering
-
-```bash
-# Check timer is active
-systemctl list-timers backup-system-weekly.timer
-
-# Check timer status
-systemctl status backup-system-weekly.timer
-
-# Verify timer is enabled
-systemctl is-enabled backup-system-weekly.timer
-
-# Manual trigger
-sudo systemctl start backup-system@system.service
-```
-
-### Service Fails to Start
-
-```bash
-# Check service status
-systemctl status backup-system@system.service
-
-# View detailed errors
-journalctl -u backup-system@system.service -n 100
-
-# Test script manually
-sudo /opt/backup-system/main.sh system
-
-# Check configuration
-sudo /opt/backup-system/segments/01_validate_config.sh
-```
-
-### Mount Issues
-
-```bash
-# Check automount status
-systemctl status mnt-extern_backup.automount
+# Check if automount units exist
+systemctl list-unit-files | grep automount
 
 # Check mount status
-systemctl status mnt-extern_backup.mount
 findmnt /mnt/extern_backup
+findmnt /mnt/system_backup
 
-# Restart automount
-sudo systemctl restart mnt-extern_backup.automount
-
-# Check device availability
-ls -la /dev/disk/by-uuid/
+# Test automount trigger
+ls /mnt/extern_backup
+findmnt /mnt/extern_backup  # Should show mounted
 ```
 
-### Shelly Connection Failed
+### Common Issues
+
+#### Mount Not Working
+
+**Problem:** Device not mounting automatically
+
+**Solution:**
+1. Check fstab syntax: `sudo mount -a`
+2. Verify UUID: `sudo blkid`
+3. Check systemd: `sudo systemctl daemon-reload`
+4. View logs: `journalctl -xe`
+
+#### Wrong Device Mounted
+
+**Problem:** Segment 06 reports UUID mismatch
+
+**Cause:** Multiple mount configurations (fstab + systemd units)
+
+**Solution:**
+1. Remove manual systemd units:
+   ```bash
+   sudo systemctl stop mnt-extern_backup.automount
+   sudo systemctl disable mnt-extern_backup.automount
+   sudo rm /etc/systemd/system/mnt-extern_backup.*
+   sudo systemctl daemon-reload
+   ```
+2. Keep only fstab entry with `x-systemd.automount`
+
+#### Timer Not Triggering
+
+**Problem:** Backup doesn't run at scheduled time
+
+**Solution:**
+1. Check timer is enabled: `systemctl is-enabled backup-system-dev-data-daily.timer`
+2. Check next trigger: `systemctl list-timers`
+3. View timer logs: `journalctl -u backup-system-dev-data-daily.timer`
+
+## Migration from Old Configuration
+
+If you have existing `/etc/systemd/system/mnt-*.mount` files:
 
 ```bash
-# Test Shelly connectivity
-curl http://192.168.10.164/rpc/Switch.GetStatus?id=0
+# 1. Stop and disable old units
+sudo systemctl stop mnt-extern_backup.automount
+sudo systemctl disable mnt-extern_backup.automount
 
-# Test from backup script
-sudo /opt/backup-system/segments/03_shelly_power_on.sh
+# 2. Remove old files
+sudo rm /etc/systemd/system/mnt-extern_backup.mount
+sudo rm /etc/systemd/system/mnt-extern_backup.automount
 
-# Check network
-ping 192.168.10.164
+# 3. Ensure fstab entry has x-systemd.automount
+sudo nano /etc/fstab
+
+# 4. Reload
+sudo systemctl daemon-reload
+
+# 5. Test
+ls /mnt/extern_backup
+findmnt /mnt/extern_backup
 ```
-
-### Backup Process Hangs
-
-```bash
-# Check if process is running
-ps aux | grep backup
-
-# Check what's locking the mount
-sudo lsof +f -- /mnt/extern_backup
-
-# Kill stuck process (last resort)
-sudo systemctl stop backup-system@system.service
-sudo pkill -9 -f backup-system
-```
-
----
-
-## Backup Restoration
-
-### List Available Archives
-
-```bash
-# Power on HDD manually if needed
-curl "http://192.168.10.164/rpc/Switch.Set?id=0&on=true"
-
-# Mount backup drive
-sudo mount /mnt/extern_backup
-
-# List archives
-sudo borg list /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo
-```
-
-### Restore Entire System
-
-**⚠️ WARNING: This will overwrite your current system!**
-
-```bash
-# Boot from Ubuntu Live USB
-# Mount your system partition
-sudo mount /dev/nvme0n1p2 /mnt
-
-# Mount backup drive
-sudo mount /mnt/extern_backup
-
-# Restore (CAREFUL!)
-sudo borg extract /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::archive-name
-
-# Restore to /mnt instead
-cd /mnt
-sudo borg extract /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::archive-name
-```
-
-### Restore Individual Files
-
-```bash
-# Mount backup
-sudo mount /mnt/extern_backup
-
-# List files in archive
-sudo borg list /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::archive-name | grep filename
-
-# Extract specific file
-sudo borg extract /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::archive-name path/to/file
-
-# Extract to specific location
-mkdir ~/restore
-cd ~/restore
-sudo borg extract /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::archive-name path/to/file
-```
-
-### Restore from Borg Repository
-
-For detailed Borg recovery procedures, see:
-```bash
-man borg-extract
-borg extract --help
-```
-
----
-
-## Best Practices
-
-### 1. Test Backups Regularly
-
-```bash
-# Monthly restore test
-sudo borg list /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo
-sudo borg info /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo::latest-archive
-```
-
-### 2. Monitor Timer Execution
-
-```bash
-# Add to crontab to email weekly summary
-0 9 * * 1 systemctl list-timers | grep backup | mail -s "Backup Timer Status" you@example.com
-```
-
-### 3. Keep Logs
-
-```bash
-# Backup logs monthly
-tar czf ~/backup-logs-$(date +%Y-%m).tar.gz /var/log/extern_backup/
-```
-
-### 4. Document Passphrase Location
-
-Create file: `/root/BACKUP_RECOVERY_INFO.txt`
-```
-Borg Passphrase Location: /root/.config/borg/passphrase
-Backup Location (secure): [your backup location]
-Repository Path: /mnt/extern_backup/creaThink_nvme0n1_System/borgrepo
-```
-
-Store copy in password manager or encrypted external drive.
-
----
 
 ## Security Considerations
 
-### Passphrase Security
-
-```bash
-# Passphrase permissions (only root readable)
-sudo chmod 600 /root/.config/borg/passphrase
-sudo chown root:root /root/.config/borg/passphrase
-```
-
 ### Service Hardening
 
-The backup service includes security restrictions:
-- `ProtectSystem=strict` - Read-only system files
+The backup service runs with security hardening:
+- `NoNewPrivileges=false` - Required for borg
 - `PrivateTmp=true` - Isolated /tmp
-- `ReadWritePaths` - Explicit write permissions
-- `CPUQuota` - Resource limits
+- `ProtectSystem=strict` - Read-only /usr, /boot
+- `ProtectHome=false` - Access to home (for docker data)
 
-### Network Security
+### Resource Limits
 
-For Shelly Plug:
-- Use local network only (no internet exposure)
-- Consider static DHCP reservation
-- Optional: Restrict by MAC address in router
+- `CPUQuota=80%` - Max 80% CPU usage
+- `MemoryMax=2G` - Max 2GB RAM
 
----
+### Logging
 
-## Appendix: systemd Calendar Syntax
+All output goes to:
+1. Local log: `/var/log/extern_backup/{profile}_{timestamp}.log`
+2. Systemd journal: `journalctl -u backup-system@{profile}.service`
+3. Backup log: `{TARGET_DIR}/logs/{profile}_{timestamp}.log`
 
-### Time Formats
+## See Also
 
-```
-Syntax: DayOfWeek Year-Month-Day Hour:Minute:Second
-
-Examples:
-*-*-* 02:00:00           # Daily at 02:00
-Mon *-*-* 02:00:00       # Every Monday at 02:00
-*-*-01 02:00:00          # First day of month at 02:00
-*-01,07-01 02:00:00      # Jan 1 and Jul 1 at 02:00
-Mon..Fri *-*-* 02:00:00  # Weekdays at 02:00
-*/2-*-* 00:00:00         # Every 2 hours
-```
-
-### Test Calendar Expression
-
-```bash
-systemd-analyze calendar "Mon *-*-* 02:00:00"
-```
-
-Output shows next 10 occurrences.
-
----
-
-## Quick Reference
-
-### Common Commands
-
-```bash
-# Start backup now
-sudo systemctl start backup-system@system.service
-
-# View logs
-journalctl -u backup-system@system.service -f
-
-# Check next run
-systemctl list-timers backup-system-weekly.timer
-
-# Edit schedule
-sudo systemctl edit backup-system-weekly.timer
-
-# Reload after changes
-sudo systemctl daemon-reload
-```
-
-### File Locations
-
-```
-/opt/backup-system/                      # Installation
-/etc/systemd/system/backup-system*.      # systemd units
-/var/log/extern_backup/                  # Local logs
-/root/.config/borg/passphrase            # Borg passphrase
-/mnt/extern_backup/                      # Mount point
-```
+- [Main README](../README.md)
+- [Docker/Nextcloud Integration](DOCKER_NEXTCLOUD.md)
+- [Segment Documentation](../segments/)

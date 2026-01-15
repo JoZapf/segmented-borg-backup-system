@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 1.0.0
-# @description Idempotently mounts backup device via systemd automount
+# @version 1.1.0
+# @description Triggers fstab automount and verifies mount
 # @author Jo Zapf
-# @changed 2026-01-12
+# @changed 2026-01-15 - Removed explicit mount command, rely on fstab automount only
 # @requires BACKUP_MNT, TARGET_DIR
+# @note Mount is handled by fstab entry with x-systemd.automount option
 
 set -euo pipefail
 
@@ -13,39 +14,23 @@ echo "[05] Mounting backup device..."
 # Create mount directories if they don't exist
 mkdir -p "${BACKUP_MNT}" "${TARGET_DIR}"
 
-# Trigger automount by accessing the path
-echo "[05] Triggering automount..."
+# Trigger automount by accessing the path (fstab handles the actual mount)
+echo "[05] Triggering fstab automount..."
 ls "${BACKUP_MNT}" >/dev/null 2>&1 || true
 
-# Check if already mounted (ext4 filesystem)
-if findmnt -rn -t ext4 -M "${BACKUP_MNT}" >/dev/null 2>&1; then
-  echo "[05] Backup device already mounted (ext4)"
-  exit 0
-fi
-
-# Attempt explicit mount (tolerates "already mounted" error)
-echo "[05] Attempting explicit mount..."
-mount "${BACKUP_MNT}" 2>&1 || {
-  # Check if mount succeeded despite error message
-  if findmnt -rn -t ext4 -M "${BACKUP_MNT}" >/dev/null 2>&1; then
-    echo "[05] Mount succeeded (error message was benign)"
-    exit 0
-  fi
-  
-  echo "[WARN] Mount command returned error, but checking final state..."
-}
-
-# Trigger automount again and verify
-ls "${BACKUP_MNT}" >/dev/null 2>&1 || true
+# Give automount time to complete
 sleep 2
 
-# Final verification
+# Verify mount succeeded
 if findmnt -rn -t ext4 -M "${BACKUP_MNT}" >/dev/null 2>&1; then
-  echo "[05] Mount successful"
+  echo "[05] Backup device mounted successfully via fstab automount"
   exit 0
 else
-  echo "[ERROR] Mount failed - ext4 filesystem not found at ${BACKUP_MNT}"
+  echo "[ERROR] Automount failed - ext4 filesystem not found at ${BACKUP_MNT}"
+  echo "[ERROR] Check fstab entry and systemd automount configuration"
   echo "[DEBUG] Current mounts at ${BACKUP_MNT}:"
   findmnt -M "${BACKUP_MNT}" || echo "  (none)"
+  echo "[DEBUG] Expected UUID: ${BACKUP_UUID}"
+  echo "[DEBUG] fstab entry should contain: x-systemd.automount"
   exit 1
 fi

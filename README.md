@@ -1,6 +1,6 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
@@ -54,8 +54,10 @@ sudo cp -r * /opt/backup-system/
 cd /opt/backup-system/systemd
 sudo ./install-systemd-units.sh
 
-# 7. Test manual backup
-sudo /opt/backup-system/main.sh system
+# 7. Configure /etc/fstab for automount (see docs/SYSTEMD.md)
+
+# 8. Test manual backup
+sudo /opt/backup-system/run-backup.sh system
 ```
 
 ---
@@ -64,6 +66,7 @@ sudo /opt/backup-system/main.sh system
 
 - **[Full Documentation](docs/README.md)** - Complete feature overview
 - **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - SMB and Git deployment workflows
 - **[Docker & Nextcloud Backup](docs/DOCKER_NEXTCLOUD.md)** - Container & database backup guide
 - **[systemd Integration](docs/SYSTEMD.md)** - Timer configuration and troubleshooting
 - **[Testing Documentation](docs/TESTING.md)** - Test results and validation
@@ -76,6 +79,7 @@ sudo /opt/backup-system/main.sh system
 ```
 backup-system/
 ├── main.sh                    # Orchestrator with PRE/POST support
+├── run-backup.sh              # Wrapper for reliable file logging
 ├── config/
 │   ├── common.env.example     # Shared configuration template
 │   └── profiles/

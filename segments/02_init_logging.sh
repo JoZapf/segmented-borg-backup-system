@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # segments/02_init_logging.sh
-# @version 1.0.0
-# @description Initializes dual logging (local fallback + backup location)
+# @version 1.1.0
+# @description Initializes logging metadata and backup log location
 # @author Jo Zapf
-# @changed 2026-01-12
+# @changed 2026-01-15 - Removed exec tee (handled by run-backup.sh wrapper)
 # @requires common.env, LOCAL_LOG_DIR
+# @note Actual log redirection is handled by run-backup.sh wrapper
 
 set -euo pipefail
 
@@ -22,16 +23,14 @@ export LOCAL_LOG="${LOCAL_LOG_DIR}/${BACKUP_PROFILE}_${TIMESTAMP}.log"
 # Backup log will be set later when mount is confirmed
 export BACKUP_LOG=""
 
-# Redirect all output to log file (while maintaining stdout)
-exec > >(tee -a "${LOCAL_LOG}") 2>&1
-
 echo "==============================================================================="
 echo "  BACKUP SYSTEM v${BACKUP_SYSTEM_VERSION}"
 echo "==============================================================================="
 echo "Started: $(date -Iseconds)"
 echo "Profile: ${BACKUP_PROFILE}"
-echo "Log: ${LOCAL_LOG}"
+echo "Local Log: ${LOCAL_LOG}"
 echo "==============================================================================="
 echo ""
 
 echo "[02] Logging initialized"
+echo "[02] Note: Full output is captured by run-backup.sh wrapper"

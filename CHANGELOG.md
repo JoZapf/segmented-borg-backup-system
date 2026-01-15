@@ -1,252 +1,122 @@
-# Changelog - Backup System
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.0] - 2026-01-14
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.2.0] - 2026-01-15
 
 ### Added
-- **Docker & Nextcloud Backup Profile** - Complete automated Docker container backup solution
-  - Nextcloud database dump automation with maintenance mode
-  - Container-based mariadb-dump with integrity verification
-  - Automatic compression: 629 MB → 102 MB (84% compression ratio)
-  - Health checks: header/footer validation, error scanning
-  - Configurable cleanup: keeps last 7 dumps by default
-- **Docker Container Management**
-  - Graceful container stop with configurable timeout (default: 30s)
-  - State preservation: saves list of running containers
-  - Automatic restart in POST-cleanup phase
-  - Downtime tracking and logging
-  - Support for 16+ concurrent containers
-- **PRE/POST Segment Architecture** - Profile-specific execution phases
-  - PRE_BACKUP_SEGMENTS: Execute before main backup (e.g., DB dumps, container stops)
-  - POST_CLEANUP_SEGMENTS: Execute after cleanup (e.g., container restarts)
-  - Segments run even if main backup fails (via trap)
-  - main.sh v2.1.0: Enhanced orchestrator with phase support
-- **New Segments**
-  - `pre_01_nextcloud_db_dump.sh` - Nextcloud DB dump with maintenance mode
-  - `pre_02_docker_stop.sh` - Docker container graceful shutdown
-  - `post_01_docker_start.sh` - Docker container restart with verification
-- **dev-data Profile** - Pre-configured Docker backup profile
-  - Backs up `/mnt/docker-data` directory
-  - Nextcloud DB dumps stored in `TARGET_DIR/database-dumps/`
-  - Internal HDD support (no Shelly Plug required)
-  - 14 daily / 8 weekly / 12 monthly retention policy
-  - Example config: `config/profiles/dev-data.env.example`
-- **Documentation**
-  - `docs/DOCKER_NEXTCLOUD.md` - Complete Docker & Nextcloud backup guide
-  - Configuration examples with security best practices
-  - Troubleshooting section for common Docker issues
-  - Performance expectations and downtime estimates
 
-### Fixed
-- **CRITICAL:** Fixed `set -euo pipefail` issues in PRE/POST segments
-  - Issue: `grep | head` pipeline in pre_01 caused SIGPIPE abort
-  - Impact: Database dump compression never executed
-  - Fix: Added `|| true` to grep pipelines (line 194)
-  - Issue: `while` loops in pre_02/post_01 aborted after first iteration
-  - Impact: Only first Docker container stopped/started
-  - Fix: Wrapped loops with `set +eo pipefail` / `set -eo pipefail`
-  - All 16 containers now stop/start successfully
+- **POST_BACKUP Phase**: New execution phase between backup creation and verification
+  - Allows time-critical cleanup (e.g., container restart) before lengthy verify
+  - Reduces container downtime from 6-10 hours to 8-12 minutes (98% reduction!)
+  - Configure via `POST_BACKUP_SEGMENTS` array in profile configs
+- **Logging Wrapper**: New `run-backup.sh` wrapper script for reliable file + journal logging
+  - Fixes incomplete local log files
+  - Ensures consistency between file logs and systemd journal
+- **Documentation**: 
+  - `docs/DEPLOYMENT.md`: Comprehensive deployment guide with SMB and Git workflows
+  - `docs/SYSTEMD.md`: Systemd integration guide with fstab configuration examples
+  - `tests/2026-01-15_mount-logging-fixes.md`: Detailed test report for this release
 
 ### Changed
-- Enhanced main.sh v2.1.0 with PRE/POST segment support
-- Improved error handling in segment execution
-- Added profile-specific segment variables (PRE_BACKUP_SEGMENTS, POST_CLEANUP_SEGMENTS)
-- Docker stop/start segments preserve exact container states
-- STATE_DIR variable for persistent state storage (`/tmp/backup-system-state`)
 
-### Security
-- Database credentials stored in profile configs (600 permissions required)
-- Sensitive configs excluded from Git via .gitignore
-- DB dumps stored in backup target (not in production source)
-- Automatic cleanup prevents dump accumulation
-
-### Performance
-- First Docker backup: ~6.5 hours (1.76 TB → 1.09 TB deduplicated)
-- Incremental Docker backup: ~5-10 minutes (only changed data)
-- DB dump compression: 84% average (629 MB → 102 MB)
-- Container downtime: ~7-10 minutes per backup
-
-## [2.0.1] - 2026-01-13
+- **BREAKING**: Mount configuration moved from systemd units to fstab
+  - Removed manual systemd mount/automount units
+  - Now relies on fstab with `x-systemd.automount` option
+  - **Migration Required**: Remove old systemd units, configure fstab (see docs/SYSTEMD.md)
+- **main.sh** (v2.0.0 → v2.2.0):
+  - Split `MAIN_SEGMENTS` into `MAIN_SEGMENTS_PART1` (backup) and `MAIN_SEGMENTS_PART2` (verify/prune)
+  - Added `POST_BACKUP_SEGMENTS` execution phase
+  - Improved output formatting and status messages
+- **segments/02_init_logging.sh** (v1.0.0 → v1.1.0):
+  - Removed problematic `exec > >(tee ...)` redirection
+  - Logging now handled by `run-backup.sh` wrapper
+  - Simpler, more reliable implementation
+- **segments/05_mount_backup.sh** (v1.0.0 → v1.1.0):
+  - Removed explicit `mount` command
+  - Now only triggers fstab automount via `ls` and verifies
+  - Added better error messages with troubleshooting hints
+- **segments/post_01_docker_start.sh** (v1.0.0 → v1.1.0):
+  - Updated for POST_BACKUP phase usage
+  - Now runs after backup but before verify
+  - Improved logging messages
+- **systemd/backup-system@.service**:
+  - Changed `ExecStart` to use `run-backup.sh` wrapper
+  - Added `/mnt/system_backup` to `ReadWritePaths`
+- **systemd/backup-system-dev-data-daily.timer**:
+  - Added missing `Unit=backup-system@dev-data.service` directive
+  - Fixed timer activation issues
+- **systemd/install-systemd-units.sh** (v1.0.0 → v1.2.0):
+  - No longer installs mount/automount units
+  - Added guidance for fstab configuration
+  - Updated installation messages
+- **config/profiles/dev-data.env.example**:
+  - Moved `post_01_docker_start.sh` from `POST_CLEANUP_SEGMENTS` to `POST_BACKUP_SEGMENTS`
+  - Added explanatory comments
+- **docs/DOCKER_NEXTCLOUD.md**:
+  - Updated with POST_BACKUP phase flow diagram
+  - Updated downtime estimates (8-12 min vs 6-10 hours)
+- **README.md**:
+  - Updated backup flow documentation
+  - Added POST_BACKUP phase explanation
+- **.gitignore**:
+  - Added `docs/` directory (work in progress documentation)
 
 ### Fixed
-- **CRITICAL:** Fixed exit code handling in segment 08_borg_backup.sh
-  - Issue: `set -e` caused script to abort on Borg exit code 1 (warnings)
-  - Impact: Backups were marked as failed even when successful with warnings
-  - Fix: Temporarily disable `set -e` during borg execution to properly capture exit codes
-  - Borg exit codes now properly handled: 0=success, 1=warning (acceptable), 2+=error
-- **CRITICAL:** Fixed mount validation in segment 06_validate_mount.sh
-  - Issue: Multiple mount entries (systemd automount + fstab) caused concatenated output
-  - Impact: UUID/filesystem validation failed with errors like "ext4ext4ext4" or wrong UUID detection
-  - Fix: Use only first mount entry with `head -1` to handle multiple mounts correctly
-  - Affects systemd-based backups where automount and manual mounts may coexist
-- Improved error messages to distinguish between warnings and actual failures
 
-### Documentation
-- Updated INSTALLATION.md with wrapper script approach instead of symlink
-- Clarified that SHELLY_TOGGLE_AFTER_SEC is already correctly set to 43200 (12h) in common.env
+- **Mount System**: Fixed UUID validation failures caused by duplicate mount configurations
+  - Issue: Wrong device mounted due to conflict between fstab and systemd units
+  - Solution: Removed duplicate systemd units, rely only on fstab with automount
+- **Logging System**: Fixed incomplete local log files
+  - Issue: Local logs stopped after segment 02 due to `exec tee` issues in systemd
+  - Solution: Created wrapper script for reliable file logging
+- **Timer Activation**: Fixed dev-data timer not starting
+  - Issue: Missing `Unit=` directive in timer file
+  - Solution: Added proper unit reference to timer configuration
 
-### Notes
-- All backups with "file changed while we backed it up" warnings are now correctly recognized as successful
-- This is expected behavior for log files and system journals during backup
+### Testing
 
-## [2.0.0] - 2026-01-12
+- Verified mount system with correct UUID validation
+- Verified complete logging to both file and journal
+- Verified both systemd timers (system at 10:00, dev-data at 00:00) operational
+- End-to-end backup test successful with all segments
+
+## [2.0.0] - 2026-01-13
 
 ### Added
-- **Profile-based architecture** - Support for multiple backup jobs with single installation
-- **13 independent segments** - Modular design for maintainability
-  - 01_validate_config.sh - Configuration validation
-  - 02_init_logging.sh - Dual logging setup
-  - 03_shelly_power_on.sh - HDD power management
-  - 04_wait_device.sh - Device availability polling
-  - 05_mount_backup.sh - Idempotent mounting
-  - 06_validate_mount.sh - UUID safety verification
-  - 07_init_borg_repo.sh - Repository initialization
-  - 08_borg_backup.sh - Archive creation
-  - 09_borg_verify.sh - Data integrity check
-  - 10_borg_prune.sh - Retention policy enforcement
-  - 11_hdd_spindown.sh - Safe HDD shutdown
-  - 12_unmount_backup.sh - Clean unmount
-  - 13_shelly_power_off.sh - Power-off management
-- **systemd integration**
-  - Mount and automount units
-  - Parametric service for profiles
-  - Timer-based scheduling
-  - Resource limits and security hardening
-- **Comprehensive testing framework**
-  - Unit tests for each segment
-  - Test runner with result collection
-  - Hardware validation tests
-- **HDD head parking** - Safe spindown before power-off
-- **Dual logging** - Local fallback + backup location
-- **Complete documentation**
-  - README.md - Overview and quick start
-  - INSTALLATION.md - Step-by-step setup
-  - SYSTEMD.md - Advanced systemd configuration
 
-### Changed
-- Restructured from monolithic script to modular segments
-- Enhanced error handling with per-segment validation
-- Improved mount safety with UUID verification
-- Separated concerns for better maintainability
+- Initial release of profile-based backup system
+- Support for multiple backup profiles (system, dev-data)
+- Borg backup integration with encryption
+- Shelly Plug power control for external HDDs
+- Systemd timer integration
+- Docker container management
+- Nextcloud database dump integration
+- Comprehensive segment-based architecture
+- UUID-based mount validation
+- Dual logging (local + backup location)
 
-### Security
-- Added UUID validation to prevent wrong disk access
-- Implemented open file handle detection
-- Added HDD head parking before power-off
-- systemd security hardening (ProtectSystem, PrivateTmp, resource limits)
+### Segments
 
-### Configuration
-- `config/common.env` - Shared configuration
-- `config/profiles/system.env` - System backup profile
-- `config/profiles/data.env.example` - Template for additional profiles
+- 01_validate_config.sh: Configuration validation
+- 02_init_logging.sh: Logging initialization
+- 03_shelly_power_on.sh: Power on external HDD
+- 04_wait_device.sh: Wait for device availability
+- 05_mount_backup.sh: Mount backup device
+- 06_validate_mount.sh: Validate correct device mounted
+- 07_init_borg_repo.sh: Initialize or verify Borg repository
+- 08_borg_backup.sh: Create backup
+- 09_borg_verify.sh: Verify backup integrity
+- 10_borg_prune.sh: Prune old backups
+- 11_hdd_spindown.sh: Spin down HDD
+- 12_unmount_backup.sh: Unmount backup device
+- 13_shelly_power_off.sh: Power off external HDD
+- pre_01_nextcloud_db_dump.sh: Dump Nextcloud database
+- pre_02_docker_stop.sh: Stop Docker containers
+- post_01_docker_start.sh: Start Docker containers
 
-### Infrastructure
-- `/opt/backup-system` - Standard installation path
-- `/var/log/extern_backup` - Centralized logging
-- `/etc/systemd/system` - systemd unit files
-
-## [1.0.0] - 2025-XX-XX
-
-### Initial Implementation
-- Monolithic backup script
-- Basic Borg integration
-- Shelly Plug power control
-- Manual execution only
-- System partition backup
-
----
-
-## Future Enhancements
-
-### Planned for v2.1.0
-- [ ] Email notifications for backup status
-- [ ] Backup integrity monitoring dashboard
-- [ ] Remote backup support (rsync, rclone)
-- [ ] Web UI for configuration and monitoring
-- [ ] Automated restore testing
-
-### Planned for v2.2.0
-- [ ] Cloud backup integration (S3, B2)
-- [ ] Incremental backup to multiple destinations
-- [ ] Backup encryption key rotation
-- [ ] Advanced retention policies (GFS)
-- [ ] Backup performance metrics
-
-### Planned for v3.0.0
-- [ ] Multi-server support
-- [ ] Centralized backup management
-- [ ] Real-time backup monitoring
-- [ ] Automated disaster recovery
-- [ ] Compliance reporting
-
----
-
-## Version History Summary
-
-| Version | Date | Key Features |
-|---------|------|--------------|
-| 2.1.0 | 2026-01-14 | Docker/Nextcloud backup, PRE/POST segments |
-| 2.0.1 | 2026-01-13 | Bugfix: Exit code handling |
-| 2.0.0 | 2026-01-12 | Profile-based, modular, systemd, testing |
-| 1.0.0 | 2025-XX-XX | Initial monolithic implementation |
-
----
-
-## Breaking Changes
-
-### v2.0.0
-- Complete restructure - not compatible with v1.0.0
-- New configuration format (profile-based)
-- New installation path (`/opt/backup-system`)
-- systemd units required for scheduled backups
-- Migration from v1.0.0 requires manual reconfiguration
-
----
-
-## Upgrade Notes
-
-### From v2.0.1 to v2.1.0
-
-**Simple update - adds Docker/Nextcloud capabilities:**
-
-1. Update files:
-   - `main.sh` (v2.1.0 - PRE/POST support)
-   - `segments/pre_01_nextcloud_db_dump.sh` (new)
-   - `segments/pre_02_docker_stop.sh` (new)
-   - `segments/post_01_docker_start.sh` (new)
-   - `config/profiles/dev-data.env.example` (new)
-2. Existing profiles (system, data) remain unchanged
-3. Existing backups remain valid
-4. Docker backup is optional - use new dev-data profile
-
-### From v2.0.0 to v2.0.1
-
-**Simple update - no configuration changes required:**
-
-1. Update file: `segments/08_borg_backup.sh`
-2. No other changes needed
-3. Existing backups remain valid
-4. Next backup will correctly handle warnings
-
-### From v1.0.0 to v2.0.0
-
-**Not a direct upgrade - requires fresh installation:**
-
-1. Back up v1.0.0 configuration
-2. Install v2.0.0 following INSTALLATION.md
-3. Migrate settings to new profile format
-4. Existing Borg repositories are compatible (no re-backup needed)
-5. Test thoroughly before removing v1.0.0
-
----
-
-## Author
-
-Created by Jo
-Berlin, Germany
-2026
-
-## License
-
-For personal and professional use
+[2.2.0]: https://github.com/JoZapf/segmented-borg-backup-system/compare/v2.0.0...v2.2.0
+[2.0.0]: https://github.com/JoZapf/segmented-borg-backup-system/releases/tag/v2.0.0

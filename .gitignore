@@ -15,6 +15,9 @@ docs/20260112_borg_nvme0n1_system_weekly_v1.sh
 *.backup
 *~
 
+# Documentation (work in progress, not ready for publication)
+docs/
+
 # OS files
 .DS_Store
 Thumbs.db

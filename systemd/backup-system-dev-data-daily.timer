@@ -1,0 +1,18 @@
+[Unit]
+Description=Daily Docker/Nextcloud Backup Timer (dev-data profile)
+Documentation=file:///opt/backup-system/docs/DOCKER_NEXTCLOUD.md
+Requires=backup-system@dev-data.service
+
+[Timer]
+Unit=backup-system@dev-data.service
+# Run daily at 00:00 (midnight)
+OnCalendar=daily
+
+# If system was off, run 10 minutes after boot
+Persistent=true
+
+# Randomize start time by up to 10 minutes to avoid conflicts
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
