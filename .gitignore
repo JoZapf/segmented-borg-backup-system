@@ -42,6 +42,18 @@ config/common.env
 config/local.env
 *.local.env
 
+# Systemd timer production files (contain deployment-specific schedules)
+systemd/backup-system-daily.timer
+systemd/backup-system-weekly.timer
+systemd/backup-system-dev-data-daily.timer
+# Keep .example files and .service template
+!systemd/*.example
+!systemd/backup-system@.service
+
+# Systemd mount units (deprecated - use fstab instead)
+systemd/mnt-*.mount
+systemd/mnt-*.automount
+
 # Sensitive files
 passphrase
 *.key
