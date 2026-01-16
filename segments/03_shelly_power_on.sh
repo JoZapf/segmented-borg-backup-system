@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # segments/03_shelly_power_on.sh
-# @version 1.0.0
+# @version 1.1.0
 # @description Powers on external HDD via Shelly Plug Plus with auto-off timer
 # @author Jo Zapf
-# @changed 2026-01-12
+# @changed 2026-01-16 - Increased HDD spin-up wait time from 10s to 20s
 # @requires SHELLY_ENABLED, SHELLY_IP, SHELLY_TOGGLE_AFTER_SEC
 
 set -euo pipefail
@@ -28,8 +28,8 @@ else
   exit 1
 fi
 
-# Wait for HDD to spin up
-echo "[03] Waiting 10s for HDD spin-up..."
-sleep 10
+# Wait for HDD to spin up (increased from 10s to 20s for large HDDs)
+echo "[03] Waiting 20s for HDD spin-up..."
+sleep 20
 
 echo "[03] Shelly power-on complete"
