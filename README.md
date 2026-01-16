@@ -1,6 +1,6 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
@@ -13,7 +13,7 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 
 ## 🎯 Key Features
 
-- **🧩 Modular Architecture** - 13 main + 3 PRE/POST segments, independently testable
+- **🧩 Modular Architecture** - 13 main + 4 PRE/POST segments, independently testable
 - **📋 Profile-Based** - Multiple backup configurations, one installation
 - **🐳 Docker Integration** - Automated container stop/start with state preservation
 - **🗄️ Database Automation** - Nextcloud DB dumps with maintenance mode & compression
@@ -23,6 +23,7 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **✅ Production-Ready** - Comprehensive testing and error handling
 - **📊 Dual Logging** - Local and backup location logging
 - **🛡️ UUID Validation** - Prevents accidental backup to wrong disk
+- **🔑 Automated Recovery Keys** - Automatic export of repository keys for disaster recovery
 
 ---
 
@@ -62,6 +63,95 @@ sudo /opt/backup-system/run-backup.sh system
 
 ---
 
+## 🏢 Installation Paths: Development vs. Production
+
+### Why `/opt/backup-system` for Production?
+
+This system uses **separate directories** for development and production:
+
+```
+📁 Development (Git Repository)          📁 Production (Live System)
+/home/user/Projekte/linux-backup-system  →  /opt/backup-system
+├── Git working directory                    ├── Root-owned installation
+├── Owned by: user:user                      ├── Owned by: root:root
+├── Permissions: 755 (user can edit)         ├── Permissions: 755 (root only)
+├── Config files: 644 (user readable)        ├── Config files: 600 (root only)
+└── Purpose: Development, updates, Git       └── Purpose: Production backups
+```
+
+### Security Rationale
+
+**Why not run directly from the Git repository?**
+
+1. **Secrets Protection**
+   ```bash
+   # Development (UNSAFE)
+   /home/user/Projekte/linux-backup-system/config/common.env
+   ├── Owned by: user:user (644)
+   └── Contains: Borg passphrase path, Shelly IP, DB passwords
+   ❌ Regular user can read all secrets!
+   
+   # Production (SAFE)
+   /opt/backup-system/config/common.env
+   ├── Owned by: root:root (600)
+   └── Contains: Borg passphrase path, Shelly IP, DB passwords
+   ✅ Only root can read secrets!
+   ```
+
+2. **Privilege Separation**
+   - **Development:** Regular user can edit, test, commit to Git
+   - **Production:** Only root can modify running system
+   - **Security:** Prevents accidental or malicious changes during backup
+
+3. **System Integration**
+   - systemd services run as root
+   - `/opt/` is the standard Linux location for add-on application software packages
+   - Clear separation between development and production code
+
+4. **Audit Trail**
+   - Production changes require `sudo` (logged in auth.log)
+   - Development changes are tracked in Git
+   - No confusion about which version is running
+
+### Recommended Workflow
+
+```bash
+# 1. DEVELOPMENT (as regular user)
+cd /home/user/Projekte/linux-backup-system
+git pull                           # Update from repository
+nano segments/08_borg_backup.sh    # Make changes
+git add segments/08_borg_backup.sh
+git commit -m "Improve backup logging"
+git push
+
+# 2. DEPLOYMENT (as root)
+sudo cp segments/08_borg_backup.sh /opt/backup-system/segments/
+sudo chmod +x /opt/backup-system/segments/08_borg_backup.sh
+
+# 3. TESTING (as root)
+sudo /opt/backup-system/run-backup.sh system
+
+# 4. PRODUCTION (via systemd)
+sudo systemctl start backup-system@system.service
+```
+
+**See [Deployment Guide](docs/DEPLOYMENT.md) for detailed deployment workflows.**
+
+### File Permissions Summary
+
+| Location | Owner | Permissions | Purpose |
+|----------|-------|-------------|----------|
+| `/home/user/Projekte/linux-backup-system/` | user:user | 755 | Development, Git |
+| `/home/user/Projekte/linux-backup-system/config/*.env` | user:user | 644 | Local dev configs (NOT in Git) |
+| `/opt/backup-system/` | root:root | 755 | Production installation |
+| `/opt/backup-system/main.sh` | root:root | 755 | Executable scripts |
+| `/opt/backup-system/config/*.env` | root:root | 600 | **Production secrets** |
+| `/root/.config/borg/passphrase` | root:root | 600 | **Borg encryption key** |
+
+**⚠️ CRITICAL:** Never commit production config files to Git! They contain sensitive credentials.
+
+---
+
 ## 📚 Documentation
 
 - **[Full Documentation](docs/README.md)** - Complete feature overview
@@ -86,7 +176,7 @@ backup-system/
 │       ├── system.env.example   # System backup template
 │       ├── data.env.example     # Data backup template
 │       └── dev-data.env.example # Docker/Nextcloud backup template
-├── segments/                  # 13 main + 3 PRE/POST segments
+├── segments/                  # 13 main + 4 PRE/POST segments
 │   ├── 01_validate_config.sh
 │   ├── 02_init_logging.sh
 │   ├── 03_shelly_power_on.sh
@@ -102,7 +192,8 @@ backup-system/
 │   ├── 13_shelly_power_off.sh
 │   ├── pre_01_nextcloud_db_dump.sh   # PRE: Nextcloud DB dump
 │   ├── pre_02_docker_stop.sh         # PRE: Docker stop
-│   └── post_01_docker_start.sh       # POST: Docker start
+│   ├── post_01_docker_start.sh       # POST: Docker start
+│   └── post_99_export_recovery_keys.sh  # POST-CLEANUP: Recovery key export
 └── systemd/                   # systemd integration
     ├── backup-system@.service
     ├── backup-system-daily.timer
@@ -145,6 +236,7 @@ backup-system/
 13. **Power Off** HDD via Shelly Plug
 
 **POST-CLEANUP Phase** (Profile-specific, optional)
+- **Recovery key export** (automated disaster recovery preparation)
 - Final notifications or logging
 
 ### Why Segmented?
@@ -309,6 +401,53 @@ config/profiles/dev-data.env.example
 
 **See [Security Guide](docs/SECURITY.md) for complete security documentation.**
 
+### 🔑 Automated Recovery Key Export
+
+**Disaster Recovery Protection:**
+
+The system automatically exports your Borg repository keys after each successful backup, ensuring you always have the necessary credentials for disaster recovery.
+
+**What's Exported:**
+
+```
+recovery/
+├── system_CREA-think_2d92c4c5_2026-01-16.zip      # Password-protected archive
+└── dev-data_CREA-think_3194a634_2026-01-16.zip
+     ├── repo-key.txt                          # Borg repository key
+     ├── recovery-info.txt                     # Complete recovery metadata
+     └── RECOVERY-README.txt                   # Step-by-step restore guide
+```
+
+**Key Features:**
+- ✅ **Smart Detection**: Only creates export when repository is new or keys missing
+- ✅ **Password Protection**: ZIP archives can be encrypted with `RECOVERY_ZIP_PASSWORD`
+- ✅ **Unique Identification**: Filename includes profile, hostname, and repository ID
+- ✅ **Complete Information**: Includes repository key, UUIDs, paths, and restore instructions
+- ✅ **One-Time Export**: Repository keys are static – only one export needed per repository
+
+**Configuration** (in `common.env`):
+
+```bash
+export RECOVERY_ENABLED="true"                  # Enable/disable recovery exports
+export RECOVERY_DIR="/home/user/Projekte/linux-backup-system/recovery"
+export RECOVERY_ZIP_PASSWORD="your-secure-password"  # ZIP encryption
+export RECOVERY_OWNER="user:user"              # File ownership
+```
+
+**Important Security Notes:**
+
+⚠️ **For disaster recovery, you need BOTH:**
+1. **Repository Key** (exported by this system to recovery/)
+2. **Borg Passphrase** (store separately in password manager/safe!)
+
+⚠️ **Recovery archives contain sensitive keys** – store securely:
+- Encrypted USB drive (offsite)
+- Secure cloud storage (encrypted)
+- Physical safe
+- Multiple secure locations for redundancy
+
+**See exported `RECOVERY-README.txt` for detailed disaster recovery instructions.**
+
 ---
 
 ## 🛠️ Requirements
@@ -317,6 +456,7 @@ config/profiles/dev-data.env.example
 - BorgBackup (`sudo apt install borgbackup`)
 - curl (`sudo apt install curl`)
 - hdparm (`sudo apt install hdparm`) - for HDD spindown
+- zip (`sudo apt install zip`) - for recovery key export
 - Shelly Plug Plus (optional, can be disabled)
 - External HDD with ext4 filesystem
 

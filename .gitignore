@@ -60,6 +60,9 @@ passphrase
 *.pem
 *.cert
 
+# Recovery archives (contain repository keys)
+recovery/
+
 # Build artifacts
 dist/
 build/

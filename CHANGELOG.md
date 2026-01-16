@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-01-16
+
+### Added
+
+- **Automated Recovery Key Export**: New `post_99_export_recovery_keys.sh` segment
+  - Automatically exports Borg repository keys after successful backups
+  - Creates password-protected ZIP archives with recovery information
+  - Smart detection: Only creates new exports when repository is new or keys missing
+  - Prevents duplicate exports via repository ID tracking
+  - ZIP filename format: `{PROFILE}_{HOSTNAME}_{REPO-ID-SHORT}_{DATE}.zip`
+  - Example: `system_CREA-think_2d92c4c5_2026-01-16.zip`
+  - ZIP contents:
+    - `repo-key.txt`: Exported Borg repository key
+    - `recovery-info.txt`: Complete recovery metadata (UUIDs, paths, credentials)
+    - `RECOVERY-README.txt`: Step-by-step disaster recovery guide
+  - Configurable via `common.env`:
+    - `RECOVERY_ENABLED`: Enable/disable feature (default: true)
+    - `RECOVERY_DIR`: Storage location for recovery archives
+    - `RECOVERY_ZIP_PASSWORD`: ZIP encryption password (optional)
+    - `RECOVERY_OWNER`: File ownership (e.g., "jo:jo")
+
+### Changed
+
+- **common.env.example** (v2.2.0 → v2.3.0):
+  - Added recovery key export configuration section
+  - New variables: `RECOVERY_ENABLED`, `RECOVERY_DIR`, `RECOVERY_ZIP_PASSWORD`, `RECOVERY_OWNER`
+- **config/profiles/system.env.example** (v2.0.1 → v2.1.0):
+  - Added `POST_CLEANUP_SEGMENTS` with recovery key export
+  - Added profile-specific segments section for consistency
+- **config/profiles/dev-data.env.example** (v1.0.2 → v1.1.0):
+  - Added `post_99_export_recovery_keys.sh` to `POST_CLEANUP_SEGMENTS`
+- **.gitignore**:
+  - Added `recovery/` directory to protect exported keys
+- **README.md**:
+  - Added comprehensive "/opt/ vs. project directory" explanation
+  - New "Installation Paths: Development vs. Production" section
+  - Security rationale for separate production installation
+  - Recommended workflow documentation
+  - File permissions reference table
+- **docs/DEPLOYMENT.md** (v1.0.0 → v1.1.0):
+  - Added "Critical Concepts" section explaining .example vs production configs
+  - Added detailed configuration update workflows
+  - New "Example: Adding POST_BACKUP Phase" guide
+  - Added "Version-Specific Migration Guides" for v2.2.0
+  - New "Configuration File Workflow" section
+  - Added comprehensive deployment checklist
+  - Enhanced troubleshooting section
+
+### Security
+
+- **Recovery Archives Protection**:
+  - ZIP archives can be password-protected via `RECOVERY_ZIP_PASSWORD`
+  - Recovery directory excluded from Git via `.gitignore`
+  - Archives contain sensitive repository keys - must be stored securely
+  - File ownership configurable to restrict access
+
+### Documentation
+
+- Enhanced deployment documentation with config management workflows
+- Added security section explaining production vs. development file locations
+- Comprehensive recovery key export documentation
+
+### Notes
+
+- Recovery key export runs in POST_CLEANUP phase (after all backup operations)
+- Repository keys are static (don't change with each backup)
+- Only one export needed per repository (automatically detected)
+- Passphrase must be backed up separately (not in recovery archives)
+- For disaster recovery, you need BOTH repository key AND passphrase
+
 ## [2.2.0] - 2026-01-15
 
 ### Added
