@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Recovery export now runs after docker_start but before verify
   - Updated @changed header to reflect POST_BACKUP migration
 
+- **config/profiles/system.env.example** (v2.2.0):
+  - Changed `HDD_DEVICE` to use `/dev/disk/by-id/*` instead of `/dev/sdX`
+  - Improved stability: Device ID no longer changes between reboots
+  - Added documentation for finding USB device by-id
+
 ### Fixed
 
 - **Critical**: Recovery key export failing silently in POST_CLEANUP phase
