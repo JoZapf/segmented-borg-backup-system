@@ -1,19 +1,19 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
 [![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
 [![Security](https://img.shields.io/badge/security-secrets%20management-orange.svg)](docs/SECURITY.md)
 
-Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management.
+Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management & optional Docker stop/start + DB dump.
 
 ---
 
 ## 🎯 Key Features
 
-- **🧩 Modular Architecture** - 13 main + 4 PRE/POST segments, independently testable
+- **🧩 Modular Architecture** - 13 main + 5 PRE/POST segments, independently testable
 - **📋 Profile-Based** - Multiple backup configurations, one installation
 - **🐳 Docker Integration** - Automated container stop/start with state preservation
 - **🗄️ Database Automation** - Nextcloud DB dumps with maintenance mode & compression
@@ -24,6 +24,16 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **📊 Dual Logging** - Local and backup location logging
 - **🛡️ UUID Validation** - Prevents accidental backup to wrong disk
 - **🔑 Automated Recovery Keys** - Automatic export of repository keys for disaster recovery
+
+---
+---
+
+## 🎯 Planed  Features
+
+- **🔑 Automated Recovery Keys** - Automatic ssh export of repository keys for disaster recovery
+- **🔑 Enhanced Secrets Management** - Fast & Work Flow Optmized
+- **🔔 Pop-Up Notifyer** - Reliable notifyer for errors
+- **📩 E-Mail Notifyer** - Reliable notifyer for errors
 
 ---
 
@@ -176,12 +186,12 @@ backup-system/
 │       ├── system.env.example   # System backup template
 │       ├── data.env.example     # Data backup template
 │       └── dev-data.env.example # Docker/Nextcloud backup template
-├── segments/                  # 13 main + 4 PRE/POST segments
+├── segments/                    # 13 main + 4 PRE/POST segments
 │   ├── 01_validate_config.sh
 │   ├── 02_init_logging.sh
 │   ├── 03_shelly_power_on.sh
 │   ├── 04_wait_device.sh
-│   ├── #05_mount_backup.sh       # disabled, job solved through fstab automount
+│   ├── #05_mount_backup.sh       # DISABLED: job solved through fstab automount
 │   ├── 06_validate_mount.sh
 │   ├── 07_init_borg_repo.sh
 │   ├── 08_borg_backup.sh
@@ -190,11 +200,12 @@ backup-system/
 │   ├── 11_hdd_spindown.sh
 │   ├── 12_unmount_backup.sh
 │   ├── 13_shelly_power_off.sh
-│   ├── pre_01_nextcloud_db_dump.sh   # PRE: Nextcloud DB dump
-│   ├── pre_02_docker_stop.sh         # PRE: Docker stop
-│   ├── post_01_docker_start.sh       # POST: Docker start
-│   └── post_99_export_recovery_keys.sh  # POST-CLEANUP: Recovery key export
-└── systemd/                   # systemd integration
+│   ├── pre_01_nextcloud_db_dump.sh      # PRE: Nextcloud DB dump
+│   ├── pre_02_docker_stop.sh            # PRE: Docker stop
+│   ├── post_01_docker_start.sh          # POST: Docker start for DB dump
+│   ├── post_01_export_recovery_keys.sh  # POST: main Recovery key export
+│   └── post_02_export_recovery_keys.sh  # POST: "dev-data" (Profile based) Recovery key export
+└── systemd/                             # systemd integration
     ├── backup-system@.service
     ├── backup-system-daily.timer
     ├── mnt-extern_backup.mount
@@ -223,9 +234,7 @@ backup-system/
 
 **POST-BACKUP Phase** (Profile-specific, optional)
 - **Docker container restart** (if enabled) ← Services back online!
-- Time-critical cleanup runs here
-- **Container downtime: Only 7-10 minutes!**
-
+- **Recovery key export** (automated disaster recovery preparation)
 **MAIN BACKUP Phase - Part 2** (All profiles, services online!)
 9. **Verify** backup integrity (full data check)
 10. **Prune** old backups per retention policy
@@ -235,9 +244,6 @@ backup-system/
 12. **Unmount** backup device
 13. **Power Off** HDD via Shelly Plug
 
-**POST-CLEANUP Phase** (Profile-specific, optional)
-- **Recovery key export** (automated disaster recovery preparation)
-- Final notifications or logging
 
 ### Why Segmented?
 
