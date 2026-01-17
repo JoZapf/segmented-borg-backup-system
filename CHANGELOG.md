@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-01-17
+
+### Changed
+
+- **BREAKING**: Recovery key export moved from POST_CLEANUP to POST_BACKUP phase
+  - **Reason**: POST_CLEANUP runs after HDD unmount, preventing repository access
+  - **Impact**: Keys now exported while repository is still accessible
+  - **Trade-off**: +5 seconds container downtime for dev-data profile (acceptable)
+  
+- **Segments Renamed**:
+  - ❌ `post_99_export_recovery_keys.sh` → REMOVED (POST_CLEANUP timing was incorrect)
+  - ✅ `post_01_export_recovery_keys.sh` → ADDED (for system profile)
+  - ✅ `post_02_export_recovery_keys.sh` → ADDED (for dev-data profile, post_01 is docker_start)
+  - Log prefixes updated: `[POST-01]` and `[POST-02]` instead of `[POST-99]`
+
+- **config/profiles/system.env.example** (v2.1.0 → v2.2.0):
+  - Changed `POST_CLEANUP_SEGMENTS` to `POST_BACKUP_SEGMENTS`
+  - Updated recovery key export segment reference
+  - Updated @changed header to reflect POST_BACKUP migration
+
+- **config/profiles/dev-data.env.example** (v1.1.0 → v1.2.0):
+  - Added `post_02_export_recovery_keys.sh` to `POST_BACKUP_SEGMENTS`
+  - Recovery export now runs after docker_start but before verify
+  - Updated @changed header to reflect POST_BACKUP migration
+
+### Fixed
+
+- **Critical**: Recovery key export failing silently in POST_CLEANUP phase
+  - **Root Cause**: `borg info` requires mounted repository for ID extraction
+  - **Error**: "Repository not accessible" after HDD unmount in cleanup
+  - **Solution**: Execute in POST_BACKUP phase while HDD is still mounted
+
+### Documentation
+
+- **tests/RECOVERY_KEY_EXPORT_FIX.md** (v1.0 → v1.1):
+  - Added UPDATE section documenting POST_BACKUP migration
+  - Detailed timing analysis showing repository access requirements
+  - Trade-off analysis for dev-data container downtime
+
+### Execution Flow (New Timing)
+
+```
+[08] Borg Backup              (HDD mounted, ~7 min)
+---
+[POST_BACKUP Phase]:
+  post_01 - Docker Start       (~30s)  ← Container back online
+  post_01 - Export Keys        (~5s)   ← System profile
+  post_02 - Export Keys        (~5s)   ← Dev-data profile  
+---
+[09] Verify                    (~7 min, container running)
+[10] Prune                     (~30s, container running)
+[11] HDD Spindown
+[12] Unmount                   (HDD unmounted)
+[13] Shelly OFF
+```
+
+### Migration Guide
+
+**For existing installations:**
+
+1. Update config examples (already done in v2.4.0)
+2. Update production configs:
+   ```bash
+   # system.env:
+   # Change: export POST_CLEANUP_SEGMENTS=("post_99_export_recovery_keys.sh")
+   # To:     export POST_BACKUP_SEGMENTS=("post_01_export_recovery_keys.sh")
+   
+   # dev-data.env:
+   # Change: export POST_CLEANUP_SEGMENTS=("post_99_export_recovery_keys.sh")
+   # To:     export POST_BACKUP_SEGMENTS=(
+   #           "post_01_docker_start.sh"
+   #           "post_02_export_recovery_keys.sh"
+   #         )
+   ```
+3. Deploy updated segments from Git
+4. Remove old `post_99_export_recovery_keys.sh` from production
+5. Test backup to verify key export works
+
 ## [2.3.0] - 2026-01-16
 
 ### Added

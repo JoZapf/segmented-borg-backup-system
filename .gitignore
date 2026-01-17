@@ -16,7 +16,8 @@ docs/20260112_borg_nvme0n1_system_weekly_v1.sh
 *~
 
 # Documentation (work in progress, not ready for publication)
-docs/
+tests/RECOVERY_KEY_EXPORT_FIX.md
+docs/2026014_Gnome_Mount-Unmount_Toggle.md
 
 # OS files
 .DS_Store

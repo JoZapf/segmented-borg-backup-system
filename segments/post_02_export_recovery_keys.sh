@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
-# post_99_export_recovery_keys.sh
-# @version 1.0.0
+# post_02_export_recovery_keys.sh (for dev-data profile)
+# @version 1.1.0
 # @description Export Borg repository keys and recovery information to encrypted ZIP archive
 # @author JoZapf
-# @date 2026-01-16
+# @changed 2026-01-17 - Created as post_02 for dev-data (post_01 is docker_start)
+# @changed 2026-01-17 - Runs in POST_BACKUP phase while HDD is still mounted
+# @date 2026-01-17
+#
+# NOTE: This is an identical copy of post_01_export_recovery_keys.sh
+#       Created for dev-data profile where post_01 is already used for docker_start
+#       All functionality is the same - only the filename and log prefix differ
 #
 # Purpose:
 # - Automatically exports Borg repository keys after successful backups
@@ -17,7 +23,7 @@
 # - Variables from profile and common.env
 #
 # Usage:
-# Automatically called by main.sh as POST_CLEANUP segment
+# Automatically called by main.sh as POST_BACKUP segment (for dev-data profile)
 #
 # Configuration (common.env):
 # - RECOVERY_ENABLED="true"               # Enable/disable recovery key export
@@ -37,7 +43,7 @@ log() {
     local level="$1"
     shift
     local message="$*"
-    local prefix="[POST-99]"
+    local prefix="[POST-02]"
     
     case "$level" in
         INFO)  echo "$prefix $message" ;;
