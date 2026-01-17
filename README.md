@@ -26,7 +26,6 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **🔑 Automated Recovery Keys** - Automatic export of repository keys for disaster recovery
 
 ---
----
 
 ## 🎯 Planed  Features
 
