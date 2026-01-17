@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **System Version**: Bumped from v2.3.0 to v2.4.0 in common.env
+  - Updated `BACKUP_SYSTEM_VERSION` for correct version display in logs
+  
 - **BREAKING**: Recovery key export moved from POST_CLEANUP to POST_BACKUP phase
   - **Reason**: POST_CLEANUP runs after HDD unmount, preventing repository access
   - **Impact**: Keys now exported while repository is still accessible
