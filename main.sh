@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.2.0
+# @version 2.4.0
 # @description Main orchestrator for profile-based backup system with POST_BACKUP_SEGMENTS support
 # @author Jo Zapf
-# @changed 2026-01-14 - Added POST_BACKUP_SEGMENTS phase for time-critical cleanup (e.g., container restart)
+# @changed 2026-01-17 - Version bump for recovery key export POST_BACKUP migration
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
