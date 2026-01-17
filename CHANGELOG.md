@@ -38,12 +38,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved stability: Device ID no longer changes between reboots
   - Added documentation for finding USB device by-id
 
+- **segments/post_01_export_recovery_keys.sh** (v1.1.0 → v1.2.0):
+  - Fixed passphrase handling: Now reads from BORG_PASSPHRASE_FILE correctly
+  - Eliminates manual passphrase prompt during recovery key export
+  
+- **segments/post_02_export_recovery_keys.sh** (v1.1.0 → v1.2.0):
+  - Fixed passphrase handling: Now reads from BORG_PASSPHRASE_FILE correctly
+  - Eliminates manual passphrase prompt during recovery key export
+
 ### Fixed
 
 - **Critical**: Recovery key export failing silently in POST_CLEANUP phase
   - **Root Cause**: `borg info` requires mounted repository for ID extraction
   - **Error**: "Repository not accessible" after HDD unmount in cleanup
   - **Solution**: Execute in POST_BACKUP phase while HDD is still mounted
+
+- **Critical**: Recovery key export requesting manual passphrase input
+  - **Root Cause**: BORG_PASSPHRASE_FILE not properly inherited in segment subshells
+  - **Error**: "Enter passphrase for key..." prompt during automated backup
+  - **Solution**: Explicitly read passphrase from file and export as BORG_PASSPHRASE
+  - **Impact**: Recovery key export now fully automated, no manual intervention required
 
 ### Documentation
 

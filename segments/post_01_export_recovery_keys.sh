@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # post_01_export_recovery_keys.sh (for system profile)
-# @version 1.1.0
+# @version 1.2.0
 # @description Export Borg repository keys and recovery information to encrypted ZIP archive
 # @author JoZapf
-# @changed 2026-01-16 - Renamed from post_99 to post_01 (runs in POST_BACKUP phase while HDD mounted)
+# @changed 2026-01-17 - Fixed passphrase handling: read from BORG_PASSPHRASE_FILE
 # @date 2026-01-16
 #
 # Purpose:
@@ -99,6 +99,11 @@ get_repo_id() {
     local repo_path="$1"
     
     log INFO "Getting repository ID from: $repo_path"
+    
+    # Ensure BORG_PASSPHRASE is set from file if available
+    if [ -n "${BORG_PASSPHRASE_FILE:-}" ] && [ -f "$BORG_PASSPHRASE_FILE" ]; then
+        export BORG_PASSPHRASE=$(cat "$BORG_PASSPHRASE_FILE")
+    fi
     
     # Get full repo info
     local repo_info
@@ -508,6 +513,11 @@ export_recovery_archive() {
     mkdir -p "$staging_dir"
     
     log INFO "Staging directory: $staging_dir"
+    
+    # Ensure BORG_PASSPHRASE is set from file if available
+    if [ -n "${BORG_PASSPHRASE_FILE:-}" ] && [ -f "$BORG_PASSPHRASE_FILE" ]; then
+        export BORG_PASSPHRASE=$(cat "$BORG_PASSPHRASE_FILE")
+    fi
     
     # Export repository key
     log INFO "Exporting repository key..."
