@@ -49,7 +49,13 @@ note right
   **Never executes manual mount command!**
 end note
 :06_validate_mount.sh;
-note right: 🔒 UUID validation
+note right
+  🔒 **FINAL SAFETY CHECK** (no retries!)
+  • UUID validation (double-check)
+  • Filesystem type verification
+  • File handle conflict detection
+  • Setup backup log path on HDD
+end note
 :07_init_borg_repo.sh;
 :08_borg_backup.sh;
 note right: 📦 Backup created
