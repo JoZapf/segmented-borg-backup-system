@@ -5,6 +5,110 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-01-20
+
+### Added
+
+- **docs/VERIFICATION.md**: Comprehensive verification and logging architecture documentation
+  - Complete explanation of cryptographic integrity verification via Borg
+  - Dual-logging system architecture (local + backup + systemd journal)
+  - POST_BACKUP phase innovation: Why services can run during verification
+  - Borg deduplication architecture explanation (verification reads repository, not source)
+  - Detailed troubleshooting scenarios with resolution procedures
+  - Best practices for verification cadence and monitoring
+  - Alert threshold recommendations for production environments
+  - All examples anonymized for general applicability
+
+- **docs/PROFILES.md**: Profile-specific configuration strategies
+  - Comparison of system profile (external USB HDD) vs dev-data profile (internal SATA HDD)
+  - Mount strategies: automount vs persistent mounting
+  - Cleanup strategies: unmount vs spindown-only
+  - Hardware-specific considerations for different HDD types
+  - Power management strategies for internal vs external storage
+  - Profile design best practices and decision framework
+
+### Changed
+
+- **config/common.env** (v2.4.0 → v2.5.0):
+  - Updated BACKUP_SYSTEM_VERSION from "2.4.0" to "2.5.0"
+  - Updated @version header from 2.4.0 to 2.5.0
+  - Updated @changed date to 2026-01-20
+
+- **config/common.env.example** (v2.2.0 → v2.5.0):
+  - Updated BACKUP_SYSTEM_VERSION from "2.3.0" to "2.5.0"
+  - Updated @version header from 2.2.0 to 2.5.0
+  - Updated @changed date to 2026-01-20
+
+- **config/profiles/dev-data.env.example** (v1.2.0):
+  - Updated @changed date to 2026-01-20
+  - Simplified POST_BACKUP comment (removed redundant explanatory text)
+  - Changed BACKUP_MNT default from `/mnt/extern_backup` to `/mnt/system_backup`
+  - Added comment explaining internal vs external HDD mount point conventions
+  - Changed HDD_DEVICE example from `/dev/sdX` to `/dev/sda`
+  - Added comment explaining device path differences (internal SATA vs external USB)
+
+- **Mount Architecture Documentation**:
+  - Clarified that segment 05_mount_backup.sh (v1.3.0+) no longer executes manual `mount` commands
+  - Documents device readiness checks, fstab automount triggering, and mount validation
+  - Explains systemd integration benefits and elimination of duplicate mount configurations
+  - Notes that actual mounting is handled entirely by fstab/systemd
+
+### Technical Details
+
+#### Profile-Specific Cleanup Strategies
+
+**system profile (external USB HDD):**
+- Mount strategy: `x-systemd.automount` in fstab (on-demand mounting)
+- Cleanup: Full unmount after backup (segment 12)
+- Power: Shelly Plug control (segment 13)
+- Rationale: Power saving, physical disconnect protection
+
+**dev-data profile (internal SATA HDD):**
+- Mount strategy: Persistent mount (no automount, always available)
+- Cleanup: Spindown only (segment 11), no unmount
+- Power: Always powered, software-managed spindown
+- Rationale: Internal HDD has no external power control, spindown sufficient
+- Note: Certain HDD models with proprietary power management features may not support
+  hdparm timer-based spindown (`-S` option). For these devices, immediate spindown
+  (`hdparm -y`) at end of backup is recommended instead of idle timers.
+
+#### Segment 12 Behavior
+
+- Current implementation: Attempts to unmount using hardcoded systemd unit names
+- Works correctly for: system profile (`mnt-extern_backup.{automount,mount}`)
+- Gracefully degrades for: dev-data profile (no automount unit exists, mount remains active)
+- Design rationale: Internal SATA HDDs benefit from persistent mounting:
+  - No power-saving requirement (always powered)
+  - Faster subsequent backup starts (no mount overhead)
+  - Spindown (segment 11) provides adequate power management
+  - Persistent mount eliminates mount/unmount cycles
+
+#### Verification Architecture
+
+- Service downtime: Only during backup creation (phases 1-2)
+- Verification impact: Zero additional downtime (runs while services already online)
+- Architecture principle: Verification reads immutable archive from repository,
+  not from live source data, allowing safe parallel service operation
+- Mount timing: Repository must remain mounted during verification (phase 4),
+  unmount only occurs in cleanup (phase 5)
+
+### Documentation
+
+- **VERIFICATION.md**: Production-ready verification strategy reference
+- **PROFILES.md**: Profile design and configuration decision framework
+- **CHANGELOG.md**: Extended technical details for profile-specific behaviors
+- All documentation uses anonymized examples and generic hardware references
+
+### Notes
+
+- Profile-specific cleanup strategies are intentional architectural decisions,
+  not bugs or configuration errors
+- Different HDD types (external USB vs internal SATA) have different optimal
+  management strategies
+- Persistent mounting for internal backup HDDs is recommended over automount
+  when no power-saving requirement exists
+- Spindown is effective power management for internal HDDs even without unmounting
+
 ## [2.4.0] - 2026-01-17
 
 ### Changed
