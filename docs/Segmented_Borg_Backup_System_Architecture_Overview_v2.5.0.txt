@@ -75,7 +75,7 @@ end note
 :09_borg_verify.sh;
 note right: ✅ Integrity check
 :10_borg_prune.sh;
-note right: 🗑️ Cleanup old backups (~30 sec)
+note right: 🗑️ Cleanup old backups
 
 |Universal Segments|
 :""**Phase ⑤: CLEANUP**""\n(All Profiles);
@@ -119,7 +119,7 @@ legend right
 | **Unmount** | Yes (12) | No (persist) |
 | **PRE** | None | DB dump, Docker stop |
 | **POST_BACKUP** | Recovery keys | Docker start + Keys |
-| **Downtime** | N/A | ~8-12 min |
+| **Downtime** | N/A |
 | **Verify Impact** | N/A | 0 (online) |
 
 **Key Innovations (v2.5.0)**
