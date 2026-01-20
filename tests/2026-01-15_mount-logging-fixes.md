@@ -293,33 +293,6 @@ ls -lh /mnt/extern_backup/creaThink_nvme0n1_System/logs/
 
 ---
 
-## Test 6: Deployment Workflow Validation
-
-### SMB Share to Production
-
-```bash
-# As user jo:
-cp /run/user/1000/gvfs/smb-share:server=192.168.10.10,share=e/Projects/linux-backup-system/run-backup.sh /tmp/
-cp /run/user/1000/gvfs/smb-share:server=192.168.10.10,share=e/Projects/linux-backup-system/segments/02_init_logging.sh /tmp/
-cp /run/user/1000/gvfs/smb-share:server=192.168.10.10,share=e/Projects/linux-backup-system/segments/05_mount_backup.sh /tmp/
-
-# As root:
-sudo cp /tmp/run-backup.sh /opt/backup-system/
-sudo cp /tmp/02_init_logging.sh /opt/backup-system/segments/
-sudo cp /tmp/05_mount_backup.sh /opt/backup-system/segments/
-
-sudo chmod +x /opt/backup-system/run-backup.sh
-sudo chmod +x /opt/backup-system/segments/*.sh
-
-rm /tmp/run-backup.sh /tmp/02_init_logging.sh /tmp/05_mount_backup.sh
-
-sudo systemctl daemon-reload
-```
-
-**Status:** ✅ PASSED - Deployment workflow documented and verified
-
----
-
 ## Summary & Recommendations
 
 ### All Tests Passed ✅
