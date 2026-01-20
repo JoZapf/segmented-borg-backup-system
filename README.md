@@ -10,7 +10,10 @@
 Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management & optional Docker stop/start + DB dump.
 
 ---
-
+<p align="center">
+  <img src="docs/github_gfx_teaser_v2.jpg" width="1100" alt="Segmented Borg Backup System">
+</p>
+---
 ## 🎯 Key Features
 
 - **🧩 Modular Architecture** - 13 main + 5 PRE/POST segments, independently testable
