@@ -11,6 +11,10 @@ logs/
 # Backup files
 docs/backup-system-v2.0.0.zip
 docs/20260112_borg_nvme0n1_system_weekly_v1.sh
+docs/github_gfx_teaser_1280x640.jpg
+docs/github_gfx_teaser.webp
+docs/github_gfx_teaser.jpg
+
 *.bak
 *.backup
 *~

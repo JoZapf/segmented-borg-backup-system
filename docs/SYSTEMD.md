@@ -15,7 +15,7 @@ Located in `/systemd/`:
 
 ### 2. Mount Configuration
 
-**IMPORTANT:** Mounts are configured in `/etc/fstab`, NOT as separate systemd units.
+**IMPORTANT:** (Auto)Mounts are configured in `/etc/fstab`, NOT as separate systemd units.
 
 ## Installation
 

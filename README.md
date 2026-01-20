@@ -21,7 +21,7 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **🔒 Safe HDD Shutdown** - Automatic head parking and spindown
 - **⏰ systemd Integration** - Scheduled backups with timer units
 - **✅ Production-Ready** - Comprehensive testing and error handling
-- **📊 Dual Logging** - Local and backup location logging
+- **📊 Dual Logging** - Local and backup location logging (common.env based locally + backup target location)
 - **🛡️ UUID Validation** - Prevents accidental backup to wrong disk
 - **🔑 Automated Recovery Keys** - Automatic export of repository keys for disaster recovery
 
@@ -187,7 +187,7 @@ backup-system/
 │       └── dev-data.env.example # Docker/Nextcloud backup template
 ├── segments/                    # 13 main + 4 PRE/POST segments
 │   ├── 01_validate_config.sh
-│   ├── 02_init_logging.sh
+│   ├── 02_init_logging.sh        # common.env based locally + backup target location
 │   ├── 03_shelly_power_on.sh
 │   ├── 04_wait_device.sh
 │   ├── #05_mount_backup.sh       # DISABLED: job solved through fstab automount
@@ -223,7 +223,7 @@ backup-system/
 
 **MAIN BACKUP Phase - Part 1** (All profiles)
 1. **Validate** configuration and dependencies
-2. **Initialize** logging (local + backup location)
+2. **Initialize** logging (common.env based locally + backup target location)
 3. **Power On** external HDD via Shelly Plug
 4. **Wait** for device availability
 5. **Mount** backup device (with automount fallback)
@@ -248,7 +248,7 @@ backup-system/
 
 - ✅ **Testable** - Each segment can be tested independently
 - ✅ **Maintainable** - Easy to modify or replace segments
-- ✅ **Debuggable** - Clear error location in logs
+- ✅ **Debuggable** - Clear error location in logs (common.env based locally + backup target location)
 - ✅ **Flexible** - Segments can be enabled/disabled
 - ✅ **Reusable** - Segments can be shared across profiles
 - ✅ **Profile-Specific** - PRE/POST segments run only for configured profiles
@@ -350,7 +350,7 @@ fi
 - ✅ UUID validation prevents wrong disk writes
 - ✅ Safe HDD head parking before power-off
 - ✅ Comprehensive error handling
-- ✅ Dual logging for audit trail
+- ✅ Dual logging for audit trail (common.env based locally + backup target location)
 
 ### 🔐 Secrets Management
 
