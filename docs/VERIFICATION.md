@@ -267,10 +267,12 @@ Phase 2: MAIN_SEGMENTS_PART1 (Backup Creation)
 ├── 02_init_logging.sh
 ├── 03_shelly_power_on.sh          (External HDD power-on)
 ├── 04_wait_device.sh
-├── 05_mount_backup.sh             ← Repository mounted
-├── 06_validate_mount.sh
+├── 05_mount_backup.sh             ← Triggers fstab automount & validates device readiness
+├── 06_validate_mount.sh           ← Validates correct UUID is mounted
 ├── 07_init_borg_repo.sh
 └── 08_borg_backup.sh              (Backup creation - services offline)
+
+**Note on mounting architecture (v1.3.0+):** Segment 05 no longer executes manual `mount` commands. Instead, it performs device readiness checks, triggers the fstab automount (configured with `x-systemd.automount`), and validates that mounting succeeded. This architectural evolution provides better systemd integration, automatic recovery after system boot, and eliminates duplicate mount configurations that previously caused UUID validation conflicts. The actual mounting is handled entirely by fstab/systemd.
 
 Phase 3: POST_BACKUP ⬅️ KEY INNOVATION
 ├── post_01_docker_start.sh        ← CONTAINERS BACK ONLINE

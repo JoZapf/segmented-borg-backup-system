@@ -196,7 +196,7 @@ backup-system/
 │   ├── 02_init_logging.sh        # common.env based locally + backup target location
 │   ├── 03_shelly_power_on.sh
 │   ├── 04_wait_device.sh
-│   ├── #05_mount_backup.sh       # DISABLED: job solved through fstab automount
+│   ├── 05_mount_backup.sh       
 │   ├── 06_validate_mount.sh
 │   ├── 07_init_borg_repo.sh
 │   ├── 08_borg_backup.sh
