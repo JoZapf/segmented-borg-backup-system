@@ -10,12 +10,6 @@ logs/
 
 # Backup files
 docs/backup-system-v2.0.0.zip
-docs/20260112_borg_nvme0n1_system_weekly_v1.sh
-docs/github_gfx_teaser_1280x640.jpg
-docs/github_gfx_teaser.webp
-docs/github_gfx_teaser.jpg
-deploy-to-github.bat
-
 *.bak
 *.backup
 *~
@@ -79,3 +73,14 @@ build/
 .state/
 *.pid
 *.sock
+
+# Various
+docs/20260112_borg_nvme0n1_system_weekly_v1.sh
+docs/github_gfx_teaser_1280x640.jpg
+docs/github_gfx_teaser.webp
+docs/github_gfx_teaser.jpg
+deploy-to-github.bat
+docs/plantuml_Profile_visualization.svg
+docs/plantuml_Profile_visualization.txt
+deploy-v2.5.0.bat
+deploy-verification-docs.bat
