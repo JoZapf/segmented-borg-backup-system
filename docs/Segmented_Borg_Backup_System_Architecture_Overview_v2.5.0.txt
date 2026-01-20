@@ -1,0 +1,133 @@
+@startuml
+title Segmented Borg Backup System - Architecture Overview (v2.5.0)
+
+|#E3F2FD|Universal Segments|
+|#F3E5F5|system profile|
+|#FCE4EC|dev-data profile|
+
+start
+
+|Universal Segments|
+:""**Phase ①: PRE_BACKUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+note right: ❌ No PRE segments
+
+|dev-data profile|
+:pre_01_nextcloud_db_dump.sh;
+:pre_02_docker_stop.sh;
+note right
+  🐳 **Container Downtime Starts**
+  • Nextcloud maintenance mode
+  • Docker containers stopped
+end note
+
+|Universal Segments|
+:""**Phase ②: MAIN Part 1 - Backup Creation**""\n(All Profiles);
+:01_validate_config.sh;
+:02_init_logging.sh;
+
+|system profile|
+:03_shelly_power_on.sh;
+note right: ⚡ Power ON external HDD
+
+|dev-data profile|
+note right: ⊘ Segment 03 skipped\n(internal HDD)
+
+|Universal Segments|
+:04_wait_device.sh;
+:05_mount_backup.sh;
+note right
+  ✅ **ACTIVE** - Triggers fstab automount
+  • Checks device readiness
+  • Triggers systemd.automount
+  • Validates mount success
+end note
+:06_validate_mount.sh;
+note right: 🔒 UUID validation
+:07_init_borg_repo.sh;
+:08_borg_backup.sh;
+note right: 📦 Backup created
+
+|Universal Segments|
+:""**Phase ③: POST_BACKUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+:post_01_export_recovery_keys.sh;
+note right: 🔑 Recovery key export
+
+|dev-data profile|
+:post_01_docker_start.sh;
+note right
+  🐳 **Container Downtime Ends**
+  Services back online
+end note
+:post_02_export_recovery_keys.sh;
+note right: 🔑 Recovery key export
+
+|Universal Segments|
+:""**Phase ④: MAIN Part 2 - Verify & Prune**""\n(All Profiles);
+note right
+  ⚠️ **Services online during verify!**
+  Zero additional downtime
+  (reads from repository, not live data)
+end note
+:09_borg_verify.sh;
+note right: ✅ Integrity check
+:10_borg_prune.sh;
+note right: 🗑️ Cleanup old backups (~30 sec)
+
+|Universal Segments|
+:""**Phase ⑤: CLEANUP**""\n(All Profiles);
+:11_hdd_spindown.sh;
+note right
+  💾 HDD spindown (hdparm -y)
+  Works for all HDD types
+end note
+
+|system profile|
+:12_unmount_backup.sh;
+note right: 📤 Unmount (automount)
+:13_shelly_power_off.sh;
+note right: ⚡ Power OFF external HDD
+
+|dev-data profile|
+:12_unmount_backup.sh;
+note right
+  ⊘ Graceful degradation
+  (persistent mount remains)
+end note
+note right: ⊘ No segment 13\n(internal HDD)
+
+|Universal Segments|
+:""**Phase ⑥: POST_CLEANUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+note right: ❌ No POST_CLEANUP segments
+
+|dev-data profile|
+note right: ❌ No POST_CLEANUP segments
+
+stop
+
+legend right
+**Profile Comparison**
+|= Feature |= system |= dev-data |
+| **Storage Type** | External USB HDD | Internal SATA HDD |
+| **Power Control** | Shelly Plug (03,13) | None |
+| **Mount** | Automount | Persistent |
+| **Unmount** | Yes (12) | No (persist) |
+| **PRE** | None | DB dump, Docker stop |
+| **POST_BACKUP** | Recovery keys | Docker start + Keys |
+| **Downtime** | N/A | ~8-12 min |
+| **Verify Impact** | N/A | 0 (online) |
+
+**Key Innovations (v2.5.0)**
+- **POST_BACKUP phase**: Services restart BEFORE verify
+- **Segment 05**: Active (triggers automount)
+- **Segment 11**: Universal spindown (hdparm -y)
+- **Segment 12**: Graceful for persistent mounts
+- **98% downtime reduction** for dev-data profile
+endlegend
+
+@enduml
