@@ -38,10 +38,15 @@ note right: ⊘ Segment 03 skipped\n(internal HDD)
 :04_wait_device.sh;
 :05_mount_backup.sh;
 note right
-  ✅ **ACTIVE** - Triggers fstab automount
-  • Checks device readiness
-  • Triggers systemd.automount
-  • Validates mount success
+  ✅ **ACTIVE** - Intelligent mount handling
+  ① Check: Already mounted with correct UUID?
+     → Yes: Done! (exit 0)
+     → No: Continue ↓
+  ② Verify: Device ready and readable?
+  ③ Trigger: Access BACKUP_MNT (ls/stat)
+     → fstab/systemd.automount does actual mount
+  ④ Validate: Correct UUID mounted?
+  **Never executes manual mount command!**
 end note
 :06_validate_mount.sh;
 note right: 🔒 UUID validation
