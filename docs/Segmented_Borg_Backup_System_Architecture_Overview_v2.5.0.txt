@@ -38,15 +38,10 @@ note right: ⊘ Segment 03 skipped\n(internal HDD)
 :04_wait_device.sh;
 :05_mount_backup.sh;
 note right
-  ✅ **ACTIVE** - Intelligent mount handling
+  ✅ **ACTIVE** - Smart mount handling
   ① Check: Already mounted with correct UUID?
-     → Yes: Done! (exit 0)
-     → No: Continue ↓
-  ② Verify: Device ready and readable?
-  ③ Trigger: Access BACKUP_MNT (ls/stat)
-     → fstab/systemd.automount does actual mount
-  ④ Validate: Correct UUID mounted?
-  **Never executes manual mount command!**
+  ② Trigger: fstab/systemd.automount (if needed)
+  ③ Retry-Validation: Correct UUID? (with retries)
 end note
 :06_validate_mount.sh;
 note right
@@ -89,7 +84,7 @@ note right: ✅ Integrity check
 note right: 🗑️ Cleanup old backups
 
 |Universal Segments|
-:""**Phase ⑤: CLEANUP**""\n(All Profiles);
+:▼ CLEANUP ▼;
 :11_hdd_spindown.sh;
 note right
   💾 HDD spindown (hdparm -y)
@@ -98,17 +93,35 @@ end note
 
 |system profile|
 :12_unmount_backup.sh;
-note right: 📤 Unmount (automount)
+note right
+  📤 Unmount successful
+  • systemctl stop automount ✅
+  • umount /mnt/extern_backup ✅
+  ✅ **Backup quasi-offline**
+  **Security:** Protection from ransomware/malware
+end note
 :13_shelly_power_off.sh;
-note right: ⚡ Power OFF external HDD
+note right
+  ⚡ Power OFF external HDD
+  ✅ **TRUE-AIR-GAP** - Physically offline
+end note
 
 |dev-data profile|
 :12_unmount_backup.sh;
 note right
-  ⊘ Graceful degradation
-  (persistent mount remains)
+  ⚠️ Error-tolerant execution
+  • systemctl stop automount ❌ (|| true)
+  • umount /mnt/system_backup ❌ (|| true)
+  → Persistent mount remains active (intended)
+  ❌ No air gap (trade-off: convenience)
+  
+  **Universal segment** instead of profile-specific:
+  Simpler maintenance & robustness
 end note
-note right: ⊘ No segment 13\n(internal HDD)
+note right
+  ⊘ No segment 13
+  (internal HDD, no external power control)
+end note
 
 |Universal Segments|
 :""**Phase ⑥: POST_CLEANUP**""\n(Profile-Specific, Optional);
@@ -130,14 +143,23 @@ legend right
 | **Unmount** | Yes (12) | No (persist) |
 | **PRE** | None | DB dump, Docker stop |
 | **POST_BACKUP** | Recovery keys | Docker start + Keys |
-| **Downtime** | N/A |
 | **Verify Impact** | N/A | 0 (online) |
+
+**Security Features**
+|= Security Aspect |= system |= dev-data |
+| **Unmount after backup** | ✅ Yes | ❌ No (persistent) |
+| **Physical power-off** | ✅ Yes (Shelly) | ❌ No (internal) |
+| **Air Gap between backups** | ✅ TRUE | ❌ None |
+| **Ransomware protection** | ✅ High | ⚠️ Lower |
+| **Malware access** | ✅ Blocked | ⚠️ Possible |
+| **Security Level** | Maximum | Convenience trade-off |
 
 **Key Innovations (v2.5.0)**
 - **POST_BACKUP phase**: Services restart BEFORE verify
 - **Segment 05**: Active (triggers automount)
 - **Segment 11**: Universal spindown (hdparm -y)
-- **Segment 12**: Graceful for persistent mounts
+- **Segment 12**: Universal with error tolerance (|| true)
+- **Air Gap Security**: True offline backup (system profile)
 - **98% downtime reduction** for dev-data profile
 endlegend
 
