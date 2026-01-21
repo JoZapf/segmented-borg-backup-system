@@ -4,15 +4,17 @@
 # @description Prunes old archives according to retention policy and compacts repo
 # @author Jo Zapf
 # @changed 2026-01-12
-# @requires REPO, retention policy variables
+# @requires REPO, retention policy variables, BORG_PASSPHRASE from secrets.env
 
 set -euo pipefail
 
 echo "[10] Pruning old archives..."
 
-# Set Borg environment variables
-export BORG_PASSCOMMAND="cat ${BORG_PASSPHRASE_FILE}"
-export BORG_LOCK_WAIT="${BORG_LOCK_WAIT}"
+# BORG_PASSPHRASE is already exported from secrets.env
+# Just verify BORG_LOCK_WAIT is set
+if [ -z "${BORG_LOCK_WAIT:-}" ]; then
+  export BORG_LOCK_WAIT=300
+fi
 
 echo "[10] Retention policy:"
 echo "[10]   Daily: ${KEEP_DAILY}"

@@ -98,14 +98,15 @@ validate_recovery_config() {
 get_repo_id() {
     local repo_path="$1"
     
-    log INFO "Getting repository ID from: $repo_path"
+    # Redirect all log output to stderr to avoid contaminating return value
+    log INFO "Getting repository ID from: $repo_path" >&2
     
     # BORG_PASSPHRASE is already exported from secrets.env
     # Get full repo info
     local repo_info
     if ! repo_info=$(borg info "$repo_path" 2>&1); then
-        log ERROR "Failed to get repository info"
-        log ERROR "$repo_info"
+        log ERROR "Failed to get repository info" >&2
+        log ERROR "$repo_info" >&2
         return 1
     fi
     
@@ -114,11 +115,11 @@ get_repo_id() {
     repo_id=$(echo "$repo_info" | grep "Repository ID:" | awk '{print $3}')
     
     if [ -z "$repo_id" ]; then
-        log ERROR "Could not extract Repository ID from borg info"
+        log ERROR "Could not extract Repository ID from borg info" >&2
         return 1
     fi
     
-    log INFO "Repository ID: $repo_id"
+    log INFO "Repository ID: $repo_id" >&2
     echo "$repo_id"
 }
 

@@ -4,15 +4,17 @@
 # @description Verifies integrity of latest Borg backup archive
 # @author Jo Zapf
 # @changed 2026-01-12
-# @requires REPO, BORG_PASSPHRASE_FILE
+# @requires REPO, BORG_PASSPHRASE from secrets.env
 
 set -euo pipefail
 
 echo "[09] Verifying backup integrity..."
 
-# Set Borg environment variables
-export BORG_PASSCOMMAND="cat ${BORG_PASSPHRASE_FILE}"
-export BORG_LOCK_WAIT="${BORG_LOCK_WAIT}"
+# BORG_PASSPHRASE is already exported from secrets.env
+# Just verify BORG_LOCK_WAIT is set
+if [ -z "${BORG_LOCK_WAIT:-}" ]; then
+  export BORG_LOCK_WAIT=300
+fi
 
 # Get latest archive name
 latest_archive=$(borg list --last 1 --format '{archive}' "${REPO}" 2>/dev/null || echo "")
