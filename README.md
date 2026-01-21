@@ -269,46 +269,11 @@ backup-system/
 → Run **ONLY for profiles that define them**  
 → Custom actions: DB dumps, container management, notifications  
 
-```mermaid
-flowchart TD
-    subgraph system["<b>Profile: system.env</b>"]
-        S1["<b>PRE_BACKUP</b><br/>❌ No segments"]
-        S2["⬇️"]
-        S3["<b>MAIN_SEGMENTS</b><br/>📦 01-13<br/><i>Same for all profiles!</i>"]
-        S4["⬇️"]
-        S5["<b>POST_CLEANUP</b><br/>❌ No segments"]
-    end
 
-    subgraph devdata["<b>Profile: dev-data.env</b>"]
-        D1["<b>PRE_BACKUP</b><br/>✅ pre_01_nextcloud_db_dump.sh<br/>✅ pre_02_docker_stop.sh"]
-        D2["⬇️"]
-        D3["<b>MAIN_SEGMENTS</b><br/>📦 01-13<br/><i>Same for all profiles!</i>"]
-        D4["⬇️"]
-        D5["<b>POST_CLEANUP</b><br/>✅ post_01_docker_start.sh"]
-    end
+<p align="center">
+  <img src="docs/Segmented_Borg_Backup_System_Architecture_Overview_v2.5.0.png" width="1100" alt="Segmented Borg Backup System">
+</p>
 
-    S1 --> S2
-    S2 --> S3
-    S3 --> S4
-    S4 --> S5
-
-    D1 --> D2
-    D2 --> D3
-    D3 --> D4
-    D4 --> D5
-
-    S3 -.->|"<b>- Universal -</b><br/>for all profiles"| D3
-
-    style S1 fill:#0C0545,stroke:#c62828
-    style S5 fill:#0C0545,stroke:#c62828
-    style S3 fill:#424040,stroke:#1565c0,stroke-width:3px
-    style D1 fill:#054516,stroke:#2e7d32
-    style D3 fill:#424040,stroke:#1565c0,stroke-width:3px
-    style D5 fill:#054516,stroke:#2e7d32
-
-    classDef arrow fill:none,stroke:none
-    class S2,S4,D2,D4 arrow
-```
 
 **Why separate?**  
 - System backup doesn't need Docker segments
