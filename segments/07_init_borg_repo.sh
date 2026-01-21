@@ -4,15 +4,17 @@
 # @description Initializes Borg repository if it doesn't exist
 # @author Jo Zapf
 # @changed 2026-01-12
-# @requires REPO, BORG_PASSPHRASE_FILE
+# @requires REPO, BORG_PASSPHRASE
 
 set -euo pipefail
 
 echo "[07] Checking Borg repository..."
 
-# Set Borg environment variables
-export BORG_PASSCOMMAND="cat ${BORG_PASSPHRASE_FILE}"
-export BORG_LOCK_WAIT="${BORG_LOCK_WAIT}"
+# BORG_PASSPHRASE is already exported from secrets.env
+# Just verify BORG_LOCK_WAIT is set
+if [ -z "${BORG_LOCK_WAIT:-}" ]; then
+  export BORG_LOCK_WAIT=300
+fi
 
 # Check if repository exists
 if borg info "${REPO}" >/dev/null 2>&1; then
@@ -32,8 +34,8 @@ echo "[07] Encryption: repokey-blake2"
 if borg init --encryption=repokey-blake2 "${REPO}"; then
   echo "[07] Repository initialized successfully"
   echo "[IMPORTANT] Repository key stored in repository config"
-  echo "[IMPORTANT] Passphrase stored in: ${BORG_PASSPHRASE_FILE}"
-  echo "[IMPORTANT] Back up both for disaster recovery!"
+  echo "[IMPORTANT] Passphrase stored in: /opt/backup-system/config/secrets.env"
+  echo "[IMPORTANT] Back up both secrets.env and repository key for disaster recovery!"
 else
   echo "[ERROR] Failed to initialize repository"
   exit 1

@@ -19,7 +19,7 @@ required_vars=(
   "BACKUP_MNT"
   "TARGET_DIR"
   "REPO"
-  "BORG_PASSPHRASE_FILE"
+  "BORG_PASSPHRASE"
   "LOCAL_LOG_DIR"
 )
 
@@ -35,19 +35,10 @@ if [ ${#missing_vars[@]} -gt 0 ]; then
   exit 1
 fi
 
-# Validate Borg passphrase file exists and is readable
-if [ ! -f "${BORG_PASSPHRASE_FILE}" ]; then
-  echo "[ERROR] Borg passphrase file not found: ${BORG_PASSPHRASE_FILE}"
-  exit 1
-fi
-
-if [ ! -r "${BORG_PASSPHRASE_FILE}" ]; then
-  echo "[ERROR] Borg passphrase file not readable: ${BORG_PASSPHRASE_FILE}"
-  exit 1
-fi
-
-if [ ! -s "${BORG_PASSPHRASE_FILE}" ]; then
-  echo "[ERROR] Borg passphrase file is empty: ${BORG_PASSPHRASE_FILE}"
+# Validate Borg passphrase is set and non-empty
+if [ -z "${BORG_PASSPHRASE:-}" ]; then
+  echo "[ERROR] BORG_PASSPHRASE is not set or empty"
+  echo "[ERROR] Check that secrets.env is loaded and contains BORG_PASSPHRASE"
   exit 1
 fi
 

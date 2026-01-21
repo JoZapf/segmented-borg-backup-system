@@ -100,11 +100,7 @@ get_repo_id() {
     
     log INFO "Getting repository ID from: $repo_path"
     
-    # Ensure BORG_PASSPHRASE is set from file if available
-    if [ -n "${BORG_PASSPHRASE_FILE:-}" ] && [ -f "$BORG_PASSPHRASE_FILE" ]; then
-        export BORG_PASSPHRASE=$(cat "$BORG_PASSPHRASE_FILE")
-    fi
-    
+    # BORG_PASSPHRASE is already exported from secrets.env
     # Get full repo info
     local repo_info
     if ! repo_info=$(borg info "$repo_path" 2>&1); then
@@ -190,8 +186,9 @@ Encryption: repokey BLAKE2b
 BORG PASSPHRASE LOCATION
 ===============================================================================
 
-The Borg passphrase is stored separately at:
-${BORG_PASSPHRASE_FILE:-/root/.config/borg/passphrase}
+The Borg passphrase is stored in:
+/opt/backup-system/config/secrets.env
+(Variable: BORG_PASSPHRASE)
 
 ⚠️  IMPORTANT: You need BOTH the repository key (in this ZIP) AND the 
 passphrase to restore backups!
@@ -514,11 +511,7 @@ export_recovery_archive() {
     
     log INFO "Staging directory: $staging_dir"
     
-    # Ensure BORG_PASSPHRASE is set from file if available
-    if [ -n "${BORG_PASSPHRASE_FILE:-}" ] && [ -f "$BORG_PASSPHRASE_FILE" ]; then
-        export BORG_PASSPHRASE=$(cat "$BORG_PASSPHRASE_FILE")
-    fi
-    
+    # BORG_PASSPHRASE is already exported from secrets.env
     # Export repository key
     log INFO "Exporting repository key..."
     local key_file="${staging_dir}/repo-key.txt"
