@@ -5,6 +5,133 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-01-21
+
+### Changed
+
+- **segments/12_unmount_backup.sh** (v1.0.0 → v1.1.0):
+  - Force unmount for **ALL profiles** (security improvement)
+  - dev-data profile now also unmounts backup device after completion
+  - Added lazy unmount (`umount -l`) as fallback for busy filesystems
+  - Improved error handling with explicit exit on unmount failure
+  - Updated logging: "backup quasi-offline (ransomware protection)"
+
+- **config/common.env** (v2.5.0 → v2.6.0):
+  - Updated BACKUP_SYSTEM_VERSION from "2.5.0" to "2.6.0"
+  - Updated @version header from 2.5.0 to 2.6.0
+  - Updated @changed date to 2026-01-21
+
+- **config/common.env.example** (v2.5.0 → v2.6.0):
+  - Updated BACKUP_SYSTEM_VERSION from "2.5.0" to "2.6.0"
+  - Updated @version header from 2.5.0 to 2.6.0
+  - Updated @changed date to 2026-01-21
+
+- **main.sh** (v2.5.0 → v2.6.0):
+  - Updated @version header from 2.5.0 to 2.6.0
+  - Updated @changed date to 2026-01-21
+
+- **README.md**:
+  - Updated version badge from 2.5.0 to 2.6.0
+
+### Security
+
+**Quasi-Offline Backup Protection (All Profiles):**
+
+Previously, only the system profile (external USB HDD) unmounted the backup device after completion, providing "air gap" protection. The dev-data profile (internal SATA HDD) kept the device mounted persistently.
+
+**New Behavior (v2.6.0):**
+- **system profile**: Unmount + Power OFF (Shelly Plug) → **TRUE AIR GAP** (physically offline)
+- **dev-data profile**: Unmount (stays powered) → **QUASI-OFFLINE** (ransomware/malware cannot access)
+
+**Security Benefits:**
+- ✅ **Ransomware Protection**: Unmounted backups cannot be encrypted by malware
+- ✅ **Malware Protection**: Running processes cannot access backup data
+- ✅ **Accidental Deletion**: Unmounted devices protected from user errors
+- ✅ **Consistent Security**: Both profiles now benefit from unmount protection
+
+**Trade-offs:**
+- dev-data: +2 seconds overhead at next backup start (remount time)
+- dev-data: Manual access requires `sudo mount /mnt/system_backup` between backups
+
+**Note:** Internal HDDs remain physically connected and powered (no true air gap possible), but filesystem-level protection significantly reduces attack surface.
+
+### Technical Details
+
+**Segment 12 Optimization:**
+
+Before (v1.0.0):
+```bash
+# Error-tolerant execution for dev-data
+umount "${BACKUP_MNT}" 2>/dev/null || true  # Failure ignored
+# → Persistent mount remained active
+```
+
+After (v1.1.0):
+```bash
+# Force unmount for ALL profiles
+if umount "${BACKUP_MNT}" 2>/dev/null; then
+  echo "[12] Unmount successful"
+elif umount -l "${BACKUP_MNT}" 2>/dev/null; then  # Lazy unmount fallback
+  echo "[12] Lazy unmount successful"
+else
+  echo "[ERROR] Unmount failed"
+  exit 1  # Explicit failure, no silent degradation
+fi
+```
+
+**Why Universal Segment with Error Handling?**
+- Simpler architecture: One segment for all profiles
+- Better maintainability: Single cleanup logic
+- Explicit failure: No silent degradation
+- Lazy unmount: Handles busy filesystems gracefully
+
+**Mount/Unmount Cycle:**
+```
+Backup Start:
+  segment 05: Check if mounted → trigger automount if needed
+  segment 06: Validate UUID
+  
+Backup End:
+  segment 11: HDD spindown (hdparm -y)
+  segment 12: Unmount (ALL profiles) ← NEW
+  segment 13: Power OFF (system only)
+  
+Next Backup:
+  segment 05: Remount automatically (fstab/systemd.automount)
+```
+
+### Documentation
+
+- Updated architecture visualization (PlantUML)
+- Updated PROFILES.md references to segment 12 behavior
+- Updated security comparison tables
+
+### Removed
+
+- Obsolete `hdparm-wd-green-spindown.service` systemd service
+  - HDD spindown now exclusively managed by segment 11 (part of backup script)
+  - Timer-based spindown (`hdparm -S`) replaced by immediate spindown (`hdparm -y`)
+  - Reason: More reliable across different HDD models (WD Green IntelliPark compatibility)
+
+### Migration Notes
+
+**For existing dev-data installations:**
+
+1. **No configuration changes required** - segment 12 is universal
+2. **Behavior change**: Backup device will be unmounted after each backup
+3. **Manual access**: Between backups, mount manually if needed:
+   ```bash
+   sudo mount /mnt/system_backup
+   ```
+4. **Automatic remount**: Next backup automatically remounts via segment 05
+5. **Security benefit**: Backup data now protected from ransomware/malware
+
+**Compatibility:**
+- ✅ Fully backward compatible
+- ✅ No profile configuration changes needed
+- ✅ Existing fstab entries remain valid
+- ✅ No changes to system profile behavior
+
 ## [2.5.0] - 2026-01-20
 
 ### Added

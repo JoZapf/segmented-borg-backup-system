@@ -1,0 +1,172 @@
+@startuml
+title Segmented Borg Backup System - Architecture Overview (v2.6.0)
+
+|#E3F2FD|Universal Segments|
+|#F3E5F5|system profile|
+|#FCE4EC|dev-data profile|
+
+start
+
+|Universal Segments|
+:""**Phase ①: PRE_BACKUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+note right: ❌ No PRE segments
+
+|dev-data profile|
+:pre_01_nextcloud_db_dump.sh;
+:pre_02_docker_stop.sh;
+note right
+  🐳 **Container Downtime Starts**
+  • Nextcloud maintenance mode
+  • Docker containers stopped
+end note
+
+|Universal Segments|
+:""**Phase ②: MAIN Part 1 - Backup Creation**""\n(All Profiles);
+:01_validate_config.sh;
+:02_init_logging.sh;
+
+|system profile|
+:03_shelly_power_on.sh;
+note right: ⚡ Power ON external HDD
+
+|dev-data profile|
+note right: ⊘ Segment 03 skipped\n(internal HDD)
+
+|Universal Segments|
+:04_wait_device.sh;
+:05_mount_backup.sh;
+note right
+  ✅ **ACTIVE** - Smart mount handling
+  ① Check: Already mounted with correct UUID?
+  ② Trigger: fstab/systemd.automount (if needed)
+  ③ Retry-Validation: Correct UUID? (with retries)
+end note
+:06_validate_mount.sh;
+note right
+  🔒 **FINAL SAFETY CHECK** (no retries!)
+  • UUID validation (double-check)
+  • Filesystem type verification
+  • File handle conflict detection
+  • Setup backup log path on HDD
+end note
+:07_init_borg_repo.sh;
+:08_borg_backup.sh;
+note right: 📦 Backup created
+
+|Universal Segments|
+:""**Phase ③: POST_BACKUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+:post_01_export_recovery_keys.sh;
+note right: 🔑 Recovery key export
+
+|dev-data profile|
+:post_01_docker_start.sh;
+note right
+  🐳 **Container Downtime Ends**
+  Services back online
+end note
+:post_02_export_recovery_keys.sh;
+note right: 🔑 Recovery key export
+
+|Universal Segments|
+:""**Phase ④: MAIN Part 2 - Verify & Prune**""\n(All Profiles);
+note right
+  ⚠️ **Services online during verify!**
+  Zero additional downtime
+  (reads from repository, not live data)
+end note
+:09_borg_verify.sh;
+note right: ✅ Integrity check
+:10_borg_prune.sh;
+note right: 🗑️ Cleanup old backups
+
+|Universal Segments|
+:▼ CLEANUP ▼;
+:11_hdd_spindown.sh;
+note right
+  💾 HDD spindown (hdparm -y)
+  Works for all HDD types
+end note
+
+|system profile|
+:12_unmount_backup.sh;
+note right
+  📤 Unmount successful
+  • systemctl stop automount ✅
+  • umount /mnt/extern_backup ✅
+  ✅ **Backup OFFLINE**
+  **Security:** Ransomware/malware protection
+end note
+:13_shelly_power_off.sh;
+note right
+  ⚡ Power OFF external HDD
+  ✅ **TRUE AIR GAP** - Physically offline
+end note
+
+|dev-data profile|
+:12_unmount_backup.sh;
+note right
+  📤 Unmount successful (NEW in v2.6.0!)
+  • systemctl stop automount (harmless if N/A)
+  • umount /mnt/system_backup ✅
+  • Lazy unmount fallback: umount -l ✅
+  ✅ **Backup QUASI-OFFLINE**
+  **Security:** Ransomware/malware protection
+  
+  **Why persistent mount removed?**
+  ✅ Better security (unmounted = protected)
+  ✅ Consistent behavior across profiles
+  ⚠️ Trade-off: +2s remount overhead
+  
+  **Universal segment** for all profiles:
+  Simpler maintenance & better security
+end note
+note right
+  ⊘ No segment 13
+  (internal HDD, no external power control)
+end note
+
+|Universal Segments|
+:""**Phase ⑥: POST_CLEANUP**""\n(Profile-Specific, Optional);
+
+|system profile|
+note right: ❌ No POST_CLEANUP segments
+
+|dev-data profile|
+note right: ❌ No POST_CLEANUP segments
+
+stop
+
+legend right
+**Profile Comparison**
+|= Feature |= system |= dev-data |
+| **Storage Type** | External USB HDD | Internal SATA HDD |
+| **Power Control** | Shelly Plug (03,13) | None |
+| **Mount** | Automount | Automount |
+| **Unmount** | Yes (12) | Yes (12) ✅ NEW |
+| **PRE** | None | DB dump, Docker stop |
+| **POST_BACKUP** | Recovery keys | Docker start + Keys |
+| **Verify Impact** | N/A | 0 (online) |
+
+**Security Features (v2.6.0)**
+|= Security Aspect |= system |= dev-data |
+| **Unmount after backup** | ✅ Yes | ✅ Yes (NEW!) |
+| **Physical power-off** | ✅ Yes (Shelly) | ❌ No (internal) |
+| **Air Gap** | ✅ TRUE (offline) | ⚠️ QUASI (powered) |
+| **Ransomware protection** | ✅ Maximum | ✅ High |
+| **Malware access** | ✅ Blocked | ✅ Blocked |
+| **Security Level** | Maximum | High (improved!) |
+
+**Key Innovations**
+- **POST_BACKUP phase**: Services restart BEFORE verify
+- **Segment 05**: Active (triggers automount)
+- **Segment 11**: Universal spindown (hdparm -y)
+- **Segment 12**: Force unmount for ALL profiles ✅ NEW
+- **Security v2.6.0**: Quasi-offline protection for all profiles
+- **98% downtime reduction** for dev-data profile
+endlegend
+
+@enduml
