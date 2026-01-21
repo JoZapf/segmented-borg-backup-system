@@ -77,5 +77,6 @@ docs/github_gfx_teaser.jpg
 deploy-to-github.bat
 docs/plantuml_Profile_visualization.svg
 docs/plantuml_Profile_visualization.txt
+docs/DEPLOYMENT.md
 deploy-v2.5.0.bat
 deploy-verification-docs.bat
