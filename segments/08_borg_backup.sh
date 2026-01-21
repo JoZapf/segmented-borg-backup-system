@@ -4,15 +4,17 @@
 # @description Creates Borg backup archive from configured sources
 # @author Jo Zapf
 # @changed 2026-01-13 - Fixed: Disable set -e during borg execution to properly handle exit code 1 (warnings)
-# @requires All Borg configuration variables
+# @requires All Borg configuration variables, BORG_PASSPHRASE from secrets.env
 
 set -euo pipefail
 
 echo "[08] Creating Borg backup archive..."
 
-# Set Borg environment variables
-export BORG_PASSCOMMAND="cat ${BORG_PASSPHRASE_FILE}"
-export BORG_LOCK_WAIT="${BORG_LOCK_WAIT}"
+# BORG_PASSPHRASE is already exported from secrets.env
+# Just verify BORG_LOCK_WAIT is set
+if [ -z "${BORG_LOCK_WAIT:-}" ]; then
+  export BORG_LOCK_WAIT=300
+fi
 
 # Generate archive name with timestamp
 archive="${ARCHIVE_PREFIX}-{now:%Y-%m-%d_%H%M%S}"
