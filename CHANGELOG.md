@@ -26,6 +26,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated @version header from 2.5.0 to 2.6.0
   - Updated @changed date to 2026-01-21
 
+- **config/profiles/system.env** (v2.2.0 → v2.6.0):
+  - Updated @version header from 2.2.0 to 2.6.0
+  - Updated @changed date to 2026-01-21
+
+- **config/profiles/system.env.example** (v2.2.0 → v2.6.0):
+  - Updated @version header from 2.2.0 to 2.6.0
+  - Updated @changed date to 2026-01-21
+
+- **config/profiles/dev-data.env** (v1.2.0 → v1.3.0):
+  - Updated @version header from 1.2.0 to 1.3.0
+  - Updated @changed date to 2026-01-21
+
+- **config/profiles/dev-data.env.example** (v1.2.0 → v1.3.0):
+  - Updated @version header from 1.2.0 to 1.3.0
+  - Updated @changed date to 2026-01-21
+  - Aligned retention rules with production values:
+    * KEEP_DAILY: 14 → 7 days
+    * KEEP_WEEKLY: 8 → 4 weeks
+    * KEEP_MONTHLY: 12 → 6 months
+  - Updated example timeline calculation
+
 - **main.sh** (v2.5.0 → v2.6.0):
   - Updated @version header from 2.5.0 to 2.6.0
   - Updated @changed date to 2026-01-21
