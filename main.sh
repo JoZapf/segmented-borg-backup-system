@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.7.0
+# @version 2.8.0
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
-# @changed 2026-01-21 - Implement centralized secrets.env (eliminate .example files)
+# @changed 2026-01-21 - Fixed load order: secrets.env before profiles (profiles need SYSTEM_*/DEVDATA_* vars)
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
@@ -39,10 +39,7 @@ fi
 
 source "${CONFIG_DIR}/common.env"
 
-# Load profile configuration
-source "${PROFILE_FILE}"
-
-# Load centralized secrets
+# Load centralized secrets BEFORE profile (profiles need SYSTEM_* and DEVDATA_* variables)
 SECRETS_FILE="${CONFIG_DIR}/secrets.env"
 if [ ! -f "${SECRETS_FILE}" ]; then
   echo "[ERROR] Secrets file not found: ${SECRETS_FILE}"
@@ -66,11 +63,14 @@ fi
 
 source "${SECRETS_FILE}"
 
+# Load profile configuration (can now use SYSTEM_* and DEVDATA_* from secrets.env)
+source "${PROFILE_FILE}"
+
 # Export all variables for segments
 set -a
 source "${CONFIG_DIR}/common.env"
-source "${PROFILE_FILE}"
 source "${SECRETS_FILE}"
+source "${PROFILE_FILE}"
 set +a
 
 # ============================================================================
