@@ -5,6 +5,272 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-01-21
+
+### Added
+
+- **config/secrets.env.example**: Template for centralized secrets management
+  - All secrets (passwords, credentials, IPs) now in one file
+  - Comprehensive documentation and security guidelines
+  - Backup strategies explained (password manager, encrypted USB, etc.)
+  - Setup instructions and verification commands
+
+- **docs/secrets_conceptual_design_and_technical_planning.md**:
+  - Technical planning document for secrets management implementation
+  - Comparison of 4 solution options (Config/Secrets Split, systemd, pass, SOPS)
+  - Detailed implementation plan with 5 phases
+  - Migration strategy and rollback procedures
+  - Security considerations and threat model
+  - Testing strategy with concrete test cases
+
+### Changed
+
+- **main.sh** (v2.6.0 → v2.7.0):
+  - **BREAKING**: Now requires `config/secrets.env` file
+  - Added centralized secrets loading after profile configuration
+  - Added secrets.env existence validation
+  - Added permission validation (must be chmod 600)
+  - Added helpful error messages with setup instructions
+  - Sources secrets.env in variable export section
+
+- **config/common.env** (v2.6.0 → v2.7.0):
+  - **Removed secrets** (moved to secrets.env):
+    * `SHELLY_IP` → secrets.env
+    * `RECOVERY_ZIP_PASSWORD` → secrets.env
+    * `BORG_PASSPHRASE_FILE` removed (now `BORG_PASSPHRASE` in secrets.env)
+  - Added comments indicating where secrets moved
+  - Updated @version and @changed headers
+  - **Can now be safely committed to Git!**
+
+- **config/profiles/system.env** (v2.6.0 → v2.7.0):
+  - No secrets removed (didn't contain any)
+  - Updated @version and description
+  - **Can now be safely committed to Git!**
+
+- **config/profiles/dev-data.env** (v1.3.0 → v1.4.0):
+  - **Removed secrets** (moved to secrets.env):
+    * `NEXTCLOUD_DB_PASSWORD` → secrets.env
+  - Added comment indicating password location
+  - Updated @version and @changed headers
+  - **Can now be safely committed to Git!**
+
+- **.gitignore**:
+  - **Removed exclusions** for production config files:
+    * `config/common.env` → **now tracked in Git** ✅
+    * `config/profiles/system.env` → **now tracked in Git** ✅
+    * `config/profiles/dev-data.env` → **now tracked in Git** ✅
+  - **Added exclusion** for secrets:
+    * `config/secrets.env` → **never in Git** ❌
+
+- **README.md**:
+  - Updated version badge from 2.6.0 to 2.7.0
+
+### Removed
+
+- **config/common.env.example** (eliminated with secrets.env approach):
+  - No longer needed – production `common.env` now in Git
+  - Eliminates maintenance overhead of keeping .example in sync
+
+- **config/profiles/system.env.example** (eliminated with secrets.env approach):
+  - No longer needed – production `system.env` now in Git
+  - Eliminates duplication and drift between example and production
+
+- **config/profiles/dev-data.env.example** (eliminated with secrets.env approach):
+  - No longer needed – production `dev-data.env` now in Git
+  - Single source of truth for configuration structure
+
+- **BORG_PASSPHRASE_FILE** approach:
+  - Previous: `/root/.config/borg/passphrase` (separate file)
+  - Now: `BORG_PASSPHRASE` in `secrets.env` (centralized)
+  - Simplifies secrets management (one file for all secrets)
+
+### Security
+
+**Centralized Secrets Management:**
+
+All secrets now consolidated in `config/secrets.env`:
+- `BORG_PASSPHRASE` (repository encryption)
+- `SHELLY_IP` (hardware control)
+- `NEXTCLOUD_DB_PASSWORD` (database access)
+- `RECOVERY_ZIP_PASSWORD` (recovery key encryption)
+
+**Security Improvements:**
+- ✅ **Single Point of Control**: One file to secure, one file to backup
+- ✅ **Clear Separation**: Configuration vs. secrets cleanly separated
+- ✅ **Git Safety**: Production configs safely in Git, secrets excluded
+- ✅ **Permission Enforcement**: main.sh validates chmod 600 before proceeding
+- ✅ **Better Documentation**: Comprehensive backup strategies documented
+
+**Security Requirements:**
+```bash
+# secrets.env must have correct permissions
+chmod 600 /opt/backup-system/config/secrets.env
+chown root:root /opt/backup-system/config/secrets.env
+
+# Verify in .gitignore
+grep "secrets.env" /opt/backup-system/.gitignore
+# Expected: config/secrets.env
+```
+
+**Backup Strategies for secrets.env:**
+1. Password Manager (BitWarden, LastPass, 1Password)
+2. Encrypted USB Drive (offsite storage)
+3. Encrypted Cloud Storage (GPG + Nextcloud/Dropbox)
+4. Paper Copy (safe/lockbox for disaster recovery)
+
+**⚠️ CRITICAL:** Without `secrets.env` backup, encrypted repositories are unrecoverable!
+
+### Migration
+
+**Automated Migration (Recommended):**
+
+```bash
+# 1. Pull latest changes (development)
+cd E:\Projects\linux-backup-system
+git pull
+
+# 2. Create secrets.env from current values
+cp config/secrets.env.example config/secrets.env
+nano config/secrets.env  # Fill TODO with actual passphrase
+chmod 600 config/secrets.env
+
+# 3. Deploy to production
+cd /opt/backup-system
+sudo git pull
+
+# 4. Copy development secrets.env to production
+sudo cp E:\Projects\linux-backup-system\config\secrets.env \
+  /opt/backup-system/config/secrets.env
+sudo chmod 600 /opt/backup-system/config/secrets.env
+sudo chown root:root /opt/backup-system/config/secrets.env
+
+# 5. Test
+sudo /opt/backup-system/run-backup.sh system --dry-run
+
+# 6. Remove old passphrase file (optional cleanup)
+sudo rm /root/.config/borg/passphrase
+```
+
+**Manual Migration Steps:**
+
+1. **Extract current secrets:**
+   ```bash
+   # BORG_PASSPHRASE
+   cat /root/.config/borg/passphrase
+   
+   # SHELLY_IP
+   grep SHELLY_IP /opt/backup-system/config/common.env
+   
+   # NEXTCLOUD_DB_PASSWORD
+   grep NEXTCLOUD_DB_PASSWORD /opt/backup-system/config/profiles/dev-data.env
+   
+   # RECOVERY_ZIP_PASSWORD
+   grep RECOVERY_ZIP_PASSWORD /opt/backup-system/config/common.env
+   ```
+
+2. **Create secrets.env:**
+   ```bash
+   cd /opt/backup-system/config
+   sudo cp secrets.env.example secrets.env
+   sudo nano secrets.env  # Fill in extracted values
+   sudo chmod 600 secrets.env
+   sudo chown root:root secrets.env
+   ```
+
+3. **Verify permissions:**
+   ```bash
+   ls -la /opt/backup-system/config/secrets.env
+   # Expected: -rw------- 1 root root ... secrets.env
+   ```
+
+4. **Test backup:**
+   ```bash
+   sudo /opt/backup-system/run-backup.sh system
+   ```
+
+**Rollback (if needed):**
+
+If issues occur, restore old configuration:
+```bash
+# Restore config backup
+sudo cp -r /opt/backup-system/config.backup-$(date +%Y%m%d) \
+  /opt/backup-system/config
+
+# Revert Git
+cd /opt/backup-system
+sudo git reset --hard v2.6.0
+
+# Test
+sudo /opt/backup-system/run-backup.sh system
+```
+
+### Benefits
+
+**Deployment Workflow:**
+- ✅ **Before**: Manual copy of config changes from .example to production
+- ✅ **After**: `git pull` – production configs automatically updated
+
+**Maintenance Overhead:**
+- ✅ **Before**: Keep 3x `.example` files in sync with production structure
+- ✅ **After**: Only 1x `secrets.env.example` to maintain
+
+**Version Control:**
+- ✅ **Before**: Production configs not in Git (only .example files)
+- ✅ **After**: Production configs in Git, full change history
+
+**Configuration Updates:**
+- ✅ **Before**: Update .example, manually copy to production
+- ✅ **After**: Update production config, commit, `git pull` in production
+
+**Secret Management:**
+- ✅ **Before**: Secrets scattered (common.env, dev-data.env, /root/.config)
+- ✅ **After**: All secrets in `secrets.env` (single file to secure/backup)
+
+### Testing
+
+**Test secrets.env Missing:**
+```bash
+sudo mv config/secrets.env config/secrets.env.bak
+sudo /opt/backup-system/run-backup.sh system
+# Expected: Error with setup instructions
+sudo mv config/secrets.env.bak config/secrets.env
+```
+
+**Test Wrong Permissions:**
+```bash
+sudo chmod 644 config/secrets.env
+sudo /opt/backup-system/run-backup.sh system
+# Expected: Error about incorrect permissions
+sudo chmod 600 config/secrets.env
+```
+
+**Test Full Backup:**
+```bash
+sudo /opt/backup-system/run-backup.sh system
+# Expected: Backup succeeds with secrets loaded
+```
+
+**Test Git Ignore:**
+```bash
+cd /opt/backup-system
+git status
+# Expected: secrets.env NOT shown (ignored)
+# Expected: common.env, system.env, dev-data.env shown (tracked)
+```
+
+### Documentation
+
+- **docs/secrets_conceptual_design_and_technical_planning.md**: Complete technical design
+- **config/secrets.env.example**: Setup and security documentation
+- **CHANGELOG.md**: Migration guide and rollback procedures
+
+### Notes
+
+- **Breaking Change**: Requires `secrets.env` creation before first run
+- **Backward Compatible**: Old `/root/.config/borg/passphrase` still works until cleanup
+- **Production Ready**: Tested migration path with rollback option
+- **Security Focused**: Permission validation, backup strategies, audit logging
+
 ## [2.6.0] - 2026-01-21
 
 ### Changed

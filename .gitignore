@@ -34,13 +34,8 @@ desktop.ini
 test-results/
 test-output/
 
-# Local configuration overrides (contain sensitive data)
-config/profiles/system.env
-config/profiles/data.env
-config/profiles/dev-data.env
-config/common.env
-config/local.env
-*.local.env
+# Secrets file (NEVER commit - contains passwords and credentials!)
+config/secrets.env
 
 # Systemd timer production files (contain deployment-specific schedules)
 systemd/backup-system-daily.timer

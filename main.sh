@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.6.0
-# @description Main orchestrator for profile-based backup system with POST_BACKUP_SEGMENTS support
+# @version 2.7.0
+# @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
-# @changed 2026-01-21 - Force unmount for all profiles (security improvement)
+# @changed 2026-01-21 - Implement centralized secrets.env (eliminate .example files)
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
@@ -42,10 +42,35 @@ source "${CONFIG_DIR}/common.env"
 # Load profile configuration
 source "${PROFILE_FILE}"
 
+# Load centralized secrets
+SECRETS_FILE="${CONFIG_DIR}/secrets.env"
+if [ ! -f "${SECRETS_FILE}" ]; then
+  echo "[ERROR] Secrets file not found: ${SECRETS_FILE}"
+  echo "[ERROR] Please create secrets.env from secrets.env.example:"
+  echo "[ERROR]   cp ${CONFIG_DIR}/secrets.env.example ${CONFIG_DIR}/secrets.env"
+  echo "[ERROR]   nano ${CONFIG_DIR}/secrets.env  # Edit with actual secrets"
+  echo "[ERROR]   chmod 600 ${CONFIG_DIR}/secrets.env"
+  echo "[ERROR] See docs/secrets_conceptual_design_and_technical_planning.md for details"
+  exit 1
+fi
+
+# Verify secrets file has correct permissions (must be 600)
+SECRETS_PERMS=$(stat -c %a "${SECRETS_FILE}" 2>/dev/null || stat -f %Lp "${SECRETS_FILE}" 2>/dev/null)
+if [ "${SECRETS_PERMS}" != "600" ]; then
+  echo "[ERROR] Secrets file has incorrect permissions: ${SECRETS_PERMS}"
+  echo "[ERROR] Required: 600 (read/write by owner only)"
+  echo "[ERROR] Fix with: chmod 600 ${SECRETS_FILE}"
+  echo "[ERROR] Current permissions expose secrets - aborting for security!"
+  exit 1
+fi
+
+source "${SECRETS_FILE}"
+
 # Export all variables for segments
 set -a
 source "${CONFIG_DIR}/common.env"
 source "${PROFILE_FILE}"
+source "${SECRETS_FILE}"
 set +a
 
 # ============================================================================
