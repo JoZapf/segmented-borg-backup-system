@@ -82,10 +82,19 @@ deploy_files() {
     cp -r "$SOURCE_DIR/segments" "$TARGET_DIR/"
     chmod +x "$TARGET_DIR/segments"/*.sh
     
-    # Copy lib directory
-    log_info "Copying lib..."
-    rm -rf "$TARGET_DIR/lib"
-    cp -r "$SOURCE_DIR/lib" "$TARGET_DIR/"
+    # Copy lib directory (optional - may not exist yet)
+    if [ -d "$SOURCE_DIR/lib" ]; then
+        log_info "Copying lib..."
+        rm -rf "$TARGET_DIR/lib"
+        cp -r "$SOURCE_DIR/lib" "$TARGET_DIR/"
+    else
+        log_info "No lib directory found (skipping - optional)"
+        # Remove old lib directory if it exists from previous deploys
+        if [ -d "$TARGET_DIR/lib" ]; then
+            log_info "Removing old lib directory from production"
+            rm -rf "$TARGET_DIR/lib"
+        fi
+    fi
     
     # Copy config directory (carefully!)
     log_info "Copying config..."
@@ -138,8 +147,10 @@ set_permissions() {
     chmod 640 "$TARGET_DIR/config"/*.env 2>/dev/null || true
     chmod 640 "$TARGET_DIR/config/profiles"/*.env 2>/dev/null || true
     
-    # Lib files
-    chmod 644 "$TARGET_DIR/lib"/*.sh
+    # Lib files (optional)
+    if [ -d "$TARGET_DIR/lib" ]; then
+        chmod 644 "$TARGET_DIR/lib"/*.sh
+    fi
     
     # Set ownership (root:root for security)
     chown -R root:root "$TARGET_DIR"
@@ -202,6 +213,8 @@ verify_deployment() {
         log_error "config directory not found"
         ((errors++))
     fi
+    
+    # Note: lib directory is optional (may not exist)
     
     # Check secrets.env
     if [ ! -f "$TARGET_DIR/config/secrets.env" ]; then
