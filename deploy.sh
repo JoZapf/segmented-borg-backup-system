@@ -147,6 +147,12 @@ set_permissions() {
     chmod 640 "$TARGET_DIR/config"/*.env 2>/dev/null || true
     chmod 640 "$TARGET_DIR/config/profiles"/*.env 2>/dev/null || true
     
+    # secrets.env needs stricter permissions (600 = owner only)
+    if [ -f "$TARGET_DIR/config/secrets.env" ]; then
+        chmod 600 "$TARGET_DIR/config/secrets.env"
+        log_info "Set secrets.env permissions to 600 (owner only)"
+    fi
+    
     # Lib files (optional)
     if [ -d "$TARGET_DIR/lib" ]; then
         chmod 644 "$TARGET_DIR/lib"/*.sh
