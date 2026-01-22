@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.8.0
+# @version 2.7.2
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
-# @changed 2026-01-21 - Fixed load order: secrets.env before profiles (profiles need SYSTEM_*/DEVDATA_* vars)
+# @changed 2026-01-22 - Version sync: Updated to match CHANGELOG v2.7.2
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 
