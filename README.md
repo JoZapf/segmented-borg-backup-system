@@ -36,10 +36,10 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 ## 🎯 Planed  Features
 
 - **🔑 Automated Recovery Keys** - Automatic ssh export of repository keys for disaster recovery
-- **🔑 Enhanced Secrets Management** - Fast & Work Flow Optmized
+- **🗂️ Auto-Close File Managers** - Safe & Automated Unmount
 - **🔔 Pop-Up Notifyer** - Reliable notifyer for errors
 - **📩 E-Mail Notifyer** - Reliable notifyer for errors
-
+AUTO_CLOSE_FILE_MANAGERS
 ---
 
 ## 📦 Quick Start
