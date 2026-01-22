@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2026-01-22
+
+### Fixed
+
+- **segments/05_mount_backup.sh** (v1.3.0 → v1.4.0):
+  - **Critical Bug**: Mount validation failed with systemd automount (x-systemd.automount in fstab)
+  - **Issue**: Script checked autofs layer ("systemd-1") instead of ext4 filesystem layer
+  - **Impact**: System profile backups failed with "Wrong device mounted" error even though mount was correct
+  - **Root Cause**: `findmnt -o SOURCE` returns the top-most mount (autofs), not the actual device
+  - **Solution**: Added `-t ext4` filter to check only ext4 layer: `findmnt -rn -t ext4 -o SOURCE`
+  - **Affected**: Initial mount check (line 20) and retry validation loop (line 84)
+  - **Technical Details**:
+    - Automount creates TWO mount entries (normal behavior):
+      - `systemd-1` (autofs) ← Auto-trigger layer
+      - `/dev/sdX` (ext4) ← Actual block device
+    - Old code: Tried `blkid "systemd-1"` → failed (not a block device)
+    - New code: Only checks ext4 layer → validates correct device
+  - **Testing**: Verified system profile with USB HDD + Shelly automount
+
+### Changed
+
+- **segments/05_mount_backup.sh**:
+  - Added explanatory comments about autofs vs ext4 layers
+  - Consistent use of `-t ext4` filter throughout validation logic
+  - Improved error messages to distinguish mount layers
+
+### Migration
+
+**No configuration changes required** - pure bug fix for automount environments.
+
+**Who is affected:**
+- Users with `x-systemd.automount` in fstab (system profile)
+- Users with external HDDs controlled by Shelly smart plugs
+- Does NOT affect profiles without automount (dev-data profile works fine)
+
+**Testing Recommendations:**
+1. Power off external HDD
+2. Run: `sudo /opt/backup-system/run-backup.sh system`
+3. Verify: Segment 05 completes without "Wrong device mounted" warnings
+
 ## [2.7.1] - 2026-01-22
 
 ### Fixed

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 1.3.0
-# @description Triggers fstab automount with improved device readiness checks
+# @version 1.4.0
+# @description Triggers fstab automount with automount-aware validation
 # @author Jo Zapf
-# @changed 2026-01-16 - Added device readiness verification before automount trigger
+# @changed 2026-01-22 - Fixed validation to handle systemd autofs layer correctly
 # @requires BACKUP_MNT, TARGET_DIR, BACKUP_UUID, BACKUP_DEV
 # @note Mount is handled by fstab entry with x-systemd.automount option
 
@@ -15,9 +15,11 @@ echo "[05] Mounting backup device..."
 mkdir -p "${BACKUP_MNT}" "${TARGET_DIR}"
 
 # Check if already mounted with correct device
-CURRENT_MOUNT=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null || echo "")
+# Note: With automount, findmnt shows TWO mounts (autofs + ext4)
+# We need to check the ext4 layer, not the autofs layer
+CURRENT_MOUNT=$(findmnt -rn -t ext4 -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null || echo "")
 if [ -n "$CURRENT_MOUNT" ]; then
-  # Something is mounted, verify it's the correct device
+  # ext4 filesystem is mounted, verify it's the correct device
   CURRENT_UUID=$(blkid -s UUID -o value "$CURRENT_MOUNT" 2>/dev/null || echo "")
   if [ "$CURRENT_UUID" = "$BACKUP_UUID" ]; then
     echo "[05] Backup device already mounted correctly"
@@ -76,10 +78,11 @@ sleep 5
 MAX_RETRIES=10
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  # Check if ext4 filesystem is mounted
+  # Check if ext4 filesystem is mounted (not autofs layer!)
   if findmnt -rn -t ext4 -M "${BACKUP_MNT}" >/dev/null 2>&1; then
     # Mounted, verify it's the CORRECT device
-    MOUNTED_DEV=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null)
+    # Use -t ext4 to get the actual device, not the autofs layer
+    MOUNTED_DEV=$(findmnt -rn -t ext4 -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null)
     MOUNTED_UUID=$(blkid -s UUID -o value "$MOUNTED_DEV" 2>/dev/null || echo "")
     
     if [ "$MOUNTED_UUID" = "$BACKUP_UUID" ]; then
