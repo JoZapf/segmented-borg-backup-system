@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.7.2
+# @version 2.7.3
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
-# @changed 2026-01-22 - Version sync: Updated to match CHANGELOG v2.7.2
+# @changed 2026-01-22 - Version sync: Updated to v2.7.3
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system
 

@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.3] - 2026-01-22
+
+### Fixed
+
+- **deploy.sh**:
+  - **Security Fix**: Set `secrets.env` to 600 permissions (owner only)
+  - **Issue**: deploy.sh set 640 (group readable), but backup system requires 600
+  - **Impact**: Backup failed with "secrets.env has incorrect permissions: 640"
+  - **Solution**: Added explicit `chmod 600` for secrets.env after general config permissions
+  - **Security**: Prevents accidental exposure of credentials to group members
+
+- **Version Consistency**:
+  - **main.sh**: Updated version header from 2.8.0 → 2.7.3
+  - **common.env**: Updated `BACKUP_SYSTEM_VERSION` from 2.8.0 → 2.7.3
+  - **Issue**: Version numbers were inconsistent across files
+  - **Impact**: Logs showed incorrect version 2.8.0 instead of current release
+  - **Solution**: Synchronized all version numbers with CHANGELOG and README
+
+### Changed
+
+- **deploy.sh**:
+  - Added informational message when setting secrets.env permissions
+  - Improved security compliance with backup system requirements
+
+### Migration
+
+**Existing installations:**
+```bash
+# Fix permissions manually (one-time)
+sudo chmod 600 /opt/backup-system/config/secrets.env
+
+# Or redeploy to apply automatically
+cd ~/Projekte/segmented-borg-backup-system
+git pull
+sudo ./deploy.sh
+```
+
+**No other changes required** - this is a security and consistency fix.
+
 ## [2.7.2] - 2026-01-22
 
 ### Fixed
