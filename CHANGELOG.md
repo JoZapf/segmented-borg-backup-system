@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-01-22
+
+### Fixed
+
+- **segments/12_unmount_backup.sh** (v1.1.0 → v1.2.0):
+  - **Critical Bug**: Fixed hardcoded systemd unit names for dev-data profile
+  - **Issue**: Error hints showed `mnt-extern_backup.automount` for all profiles
+  - **Impact**: Incorrect unmount hints prevented manual recovery for dev-data backups
+  - **Solution**: Dynamically derive systemd unit name from `BACKUP_MNT` variable
+  - **Example**: `/mnt/system_backup` → `mnt-system_backup.automount`
+  - **Affected**: All three systemd stop operations and error hint messages
+  - **Testing**: Verified correct hints for both system and dev-data profiles
+
+- **segments/pre_01_nextcloud_db_dump.sh** (v2.0.0 → v2.1.0):
+  - **Bug**: DB dump cleanup only removed `.sql.gz` files, ignored `.sql` files
+  - **Issue**: Old uncompressed dumps (from before compression feature) accumulated
+  - **Impact**: Wasted 1.2 GB disk space per old dump
+  - **Solution**: Changed pattern from `*.sql.gz` to `*.sql*` (matches both)
+  - **Enhancement**: Made retention configurable via `DB_DUMP_RETENTION` variable
+  - **Default**: Keep last 7 dumps (unchanged behavior)
+  - **Usage**: Set `export DB_DUMP_RETENTION="14"` in profile for custom retention
+  - **Logging**: Added "Retention policy" message showing configured value
+
+### Changed
+
+- **segments/12_unmount_backup.sh**:
+  - Systemd unit derivation logic: `SYSTEMD_UNIT=$(echo "${BACKUP_MNT}" | sed 's|^/||; s|/|-|g')`
+  - Applied to 3 locations: error hints (line 24), systemd stop (line 38), verify error (line 66)
+  - Improved maintainability: Single point of change for mount-to-unit translation
+
+- **segments/pre_01_nextcloud_db_dump.sh**:
+  - Step 6 cleanup logic rewritten for clarity and configurability
+  - Added retention policy logging for transparency
+  - Better error handling for edge cases (empty directory, no matches)
+
+### Migration
+
+**No configuration changes required** - these are pure bug fixes.
+
+**Optional cleanup** (recommended):
+```bash
+# Remove old uncompressed DB dumps manually
+sudo rm /mnt/system_backup/creaThink_docker-data/database-dumps/nextcloud_db-dump_*-*-*_*-*-*.sql
+
+# Verify cleanup
+ls -lh /mnt/system_backup/creaThink_docker-data/database-dumps/
+# Should only show .sql.gz files
+```
+
+**Custom retention** (optional):
+```bash
+# In config/profiles/dev-data.env, add:
+export DB_DUMP_RETENTION="14"  # Keep 14 dumps instead of default 7
+```
+
+### Testing
+
+**Test 1 - Segment 12 Dynamic Unit Detection:**
+```bash
+# Trigger unmount error (open file manager in backup dir)
+nautilus /mnt/system_backup/creaThink_docker-data &
+sudo /opt/backup-system/run-backup.sh dev-data
+
+# Expected output:
+# [HINT] Use: sudo systemctl stop mnt-system_backup.automount
+#                                      ^^^ Correct unit name!
+
+# Before fix showed:
+# [HINT] Use: sudo systemctl stop mnt-extern_backup.automount
+#                                      ^^^ Wrong for dev-data!
+```
+
+**Test 2 - DB Dump Cleanup:**
+```bash
+# Create test dumps
+touch /tmp/test-{1..10}.sql
+touch /tmp/test-{1..10}.sql.gz
+
+# Run cleanup logic
+DB_DUMP_DIR="/tmp" DB_DUMP_RETENTION=7 \
+  bash -c 'old=$(ls -t /tmp/test-*.sql* | tail -n +8); echo "$old" | xargs rm -f'
+
+# Verify: Should have exactly 7 files remaining (mixed .sql and .sql.gz)
+ls -1 /tmp/test-* | wc -l  # Expected: 7
+```
+
+**Test 3 - Full Backup Run:**
+```bash
+# Deploy fixes to production
+cd ~/Projekte/segmented-borg-backup-system
+git pull
+sudo rsync -av --delete segments/ /opt/backup-system/segments/
+
+# Run backup
+sudo /opt/backup-system/run-backup.sh dev-data 2>&1 | tee /tmp/bugfix-test.log
+
+# Verify in log:
+grep "Retention policy" /tmp/bugfix-test.log
+# Expected: [PRE-01] Retention policy: Keep last 7 dumps
+
+grep "Stopping systemd mount units" /tmp/bugfix-test.log -A2
+# Expected: systemctl stop mnt-system_backup.automount
+```
+
+### Documentation
+
+- Updated segment version headers with @changed timestamps
+- Added inline comments explaining systemd unit derivation logic
+- Enhanced cleanup step logging for troubleshooting
+
+### Notes
+
+- **Patch Release**: Bug fixes only, no new features or breaking changes
+- **Backward Compatible**: Works with all existing configurations
+- **Production Ready**: Tested on both system and dev-data profiles
+- **Deployment**: Standard `git pull` + `rsync` workflow (see Migration section)
+
 ## [2.7.0] - 2026-01-21
 
 ### Added

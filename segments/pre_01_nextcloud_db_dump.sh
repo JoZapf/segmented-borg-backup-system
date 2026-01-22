@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # segments/pre_01_nextcloud_db_dump.sh
-# @version 2.0.0
+# @version 2.1.0
 # @description Dumps Nextcloud database using Docker exec (container-based approach)
 # @author Jo Zapf
-# @changed 2026-01-13 - Rewritten to use Docker exec method with maintenance mode
+# @changed 2026-01-22 - Improved cleanup: handles both .sql and .sql.gz, configurable retention
 # @requires NEXTCLOUD_ENABLED, NEXTCLOUD_DOCKER_*, TARGET_DIR
 
 set -euo pipefail
@@ -227,12 +227,22 @@ fi
 echo ""
 echo "[PRE-01] Step 6: Cleaning up old dumps..."
 
-# Keep last 7 dumps
-old_dumps=$(ls -t "${DB_DUMP_DIR}"/nextcloud_db-dump_*.sql.gz 2>/dev/null | tail -n +8)
+# Configurable retention (default: keep last 7 dumps)
+DB_DUMP_RETENTION=${DB_DUMP_RETENTION:-7}
+keep_count=$((DB_DUMP_RETENTION))
+delete_from=$((keep_count + 1))
+
+echo "[PRE-01] Retention policy: Keep last ${DB_DUMP_RETENTION} dumps"
+
+# Find all dumps (both .sql and .sql.gz), sorted by modification time (newest first)
+# Then delete everything after the retention count
+old_dumps=$(ls -t "${DB_DUMP_DIR}"/nextcloud_db-dump_*.sql* 2>/dev/null | tail -n +${delete_from})
+
 if [ -n "${old_dumps}" ]; then
-  echo "${old_dumps}" | xargs rm -f
   removed_count=$(echo "${old_dumps}" | wc -l)
-  echo "[PRE-01] Removed ${removed_count} old dump(s)"
+  echo "[PRE-01] Removing ${removed_count} old dump(s)..."
+  echo "${old_dumps}" | xargs rm -f
+  echo "[PRE-01] Cleanup completed"
 else
   echo "[PRE-01] No old dumps to remove"
 fi

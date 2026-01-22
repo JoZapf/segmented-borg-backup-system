@@ -1,6 +1,6 @@
 # Segmented Borg Backup System
 
-[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
+[![Version](https://img.shields.io/badge/version-2.7.1-blue.svg)](https://github.com/JoZapf/segmented-borg-backup-system/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
