@@ -47,6 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Result**: Eliminates false error messages, clearer success reporting
   - New message: "Already unmounted by systemd - backup quasi-offline (ransomware protection)"
 
+- **systemd Timer Units**: All timer templates updated
+  - **Changed**: `Persistent=true` → `Persistent=false` in all timer files
+  - **Issue**: Backups ran immediately after every system boot
+  - **Root Cause**: `Persistent=true` causes systemd to run missed backups on boot
+  - **Impact**: Unexpected backup execution after restart, potential resource contention
+  - **Files Updated**:
+    - systemd/backup-system-daily.timer.example
+    - systemd/backup-system-dev-data-daily.timer
+    - systemd/backup-system-dev-data-daily.timer.example
+    - systemd/backup-system-weekly.timer.example
+  - **Behavior**: Backups now only run at scheduled times, not after boot
+  - **Note**: Set `Persistent=true` manually if you want catch-up behavior
+
 ### Fixed
 
 - **Root Filesystem Contamination**:

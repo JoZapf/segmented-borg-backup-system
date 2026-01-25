@@ -7,7 +7,8 @@ Requires=backup-system@system.service
 Unit=backup-system@system.service
 # Run every Sunday at 02:00 AM
 OnCalendar=Sun *-*-* 02:00:00
-Persistent=true
+# Don't run missed backups after boot (set to true if you want catch-up)
+Persistent=false
 RandomizedDelaySec=15min
 
 [Install]

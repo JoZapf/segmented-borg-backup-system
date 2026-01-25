@@ -8,8 +8,9 @@ Unit=backup-system@dev-data.service
 # Run daily at 00:00 (midnight)
 OnCalendar=daily
 
-# If system was off, run 10 minutes after boot
-Persistent=true
+# Don't run missed backups after boot (prevents automatic backup on system start)
+# Set to true if you want to catch up on missed backups
+Persistent=false
 
 # Randomize start time by up to 10 minutes to avoid conflicts
 RandomizedDelaySec=10min
