@@ -5,6 +5,126 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.1] - 2026-01-25
+
+### Added
+
+- **Mount-Point Protection**:
+  - **Critical Safety Check**: Added `mountpoint -q` validation in segment 06
+  - **Bind-Mount Detection**: Prevents backup to overlays or bind-mounts
+  - **Immutable Flag Support**: Mount-points can be protected with `chattr +i`
+  - **Issue**: Backup wrote to root filesystem when mount failed (logged as /dev/nvme0n1p2[/mnt/extern_backup])
+  - **Root Cause**: Mount-point directories existed on root, no write protection
+  - **Impact**: CRITICAL - Backup data accumulated on root partition, wasting space
+  - **Solution**: Triple-layer protection:
+    1. Mountpoint validation (exits if not a real mount)
+    2. Bind-mount detection (rejects overlays)
+    3. Immutable flags (prevents writes when unmounted)
+
+- **Cleanup Tooling**:
+  - **tests/cleanup_root_backup_dirs.sh**: Safe cleanup of accidentally created backup data on root
+  - Features: Safety checks, size reporting, confirmation prompt, immutable flag management
+  - Purpose: One-time cleanup of directories created before protection was active
+
+- **Documentation**:
+  - **DEPLOYMENT_2.8.1_mount_protection.md**: Complete deployment guide
+  - **tests/MOUNT_VALIDATION_ANALYSIS_2026-01-25.md**: Root cause analysis
+  - Includes troubleshooting, verification steps, rollback procedures
+
+### Changed
+
+- **segments/06_validate_mount.sh**: v1.0.1 → v1.1.0
+  - Enhanced with critical mountpoint verification
+  - Now exits with detailed error messages if mount-point is a directory on root
+  - Detects and rejects bind-mounts and overlays
+  - Added confirmation message: "Confirmed: [PATH] is a proper block device mount"
+
+### Fixed
+
+- **Root Filesystem Contamination**:
+  - **Symptom**: system-Profile backup failed with "Wrong device mounted: /dev/nvme0n1p2[/mnt/extern_backup]"
+  - **Analysis**: Mount-point existed as regular directory on root partition
+  - **Timeline**: 
+    - 2026-01-25 10:04: system-Backup attempted, mount failed
+    - Mount validation detected wrong device but continued
+    - Borg wrote backup data directly to /mnt/extern_backup on root filesystem
+  - **Prevention**: New mountpoint checks abort backup before Borg can write
+
+### Security
+
+- **Immutable Mount-Point Protection**:
+  - Mount-points can now be protected with `chattr +i /mnt/extern_backup`
+  - Prevents ANY writes when device is not mounted
+  - Recommended for all production deployments
+  - Documented in deployment guide
+
+### Migration
+
+**Required for all existing installations:**
+
+```bash
+# 1. Update code
+cd ~/Projekte/segmented-borg-backup-system
+git pull origin main
+sudo ./deploy.sh
+
+# 2. Protect mount-points (NEW - CRITICAL)
+sudo chattr +i /mnt/extern_backup
+sudo chattr +i /mnt/system_backup
+
+# 3. Clean up existing backup data on root (if present)
+cd ~/Projekte/segmented-borg-backup-system/tests
+chmod +x cleanup_root_backup_dirs.sh
+sudo ./cleanup_root_backup_dirs.sh
+# Follow prompts, type "DELETE" to confirm
+
+# 4. Verify protection
+echo "test" | sudo tee /mnt/extern_backup/test.txt
+# Should fail with "Operation not permitted"
+
+# 5. Remount devices
+sudo mount -a
+
+# 6. Test backup
+sudo /opt/backup-system/run-backup.sh system
+```
+
+**Expected behavior after update:**
+- Backup will ABORT with CRITICAL error if mount-point is not mounted
+- This is CORRECT behavior - prevents root filesystem writes
+- Check mount status before running backup
+
+### Technical Details
+
+**Mount Validation Sequence (segment 06):**
+1. Check UUID matches expected device ✓ (existing)
+2. **NEW:** Verify mount-point is actually mounted (`mountpoint -q`)
+3. **NEW:** Verify source is block device (not bind-mount)
+4. Check for open file handles ✓ (existing)
+
+**Error Messages:**
+- `[CRITICAL] /mnt/extern_backup is NOT a mount point!` → Mount failed, backup aborted
+- `[CRITICAL] Detected bind mount or overlay` → Invalid mount type, backup aborted
+- Both indicate safety mechanisms working correctly
+
+**Recovery from Mount Failure:**
+```bash
+# Check Shelly status (for system-Profile)
+curl http://192.168.10.164/relay/0
+
+# Check device availability
+lsblk | grep sdc1
+
+# Manual mount if needed
+sudo mount /mnt/extern_backup
+
+# Verify mount
+findmnt /mnt/extern_backup
+
+# Retry backup
+sudo /opt/backup-system/run-backup.sh system
+```
+
 ## [2.7.3] - 2026-01-22
 
 ### Fixed

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.7.3
+# @version 2.8.1
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
+# @changed 2026-01-25 - Version 2.8.1: Mount-point protection and validation enhancements
 # @changed 2026-01-22 - Version sync: Updated to v2.7.3
 # @usage ./main.sh [profile_name]
 # @example ./main.sh system

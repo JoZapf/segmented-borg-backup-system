@@ -80,3 +80,4 @@ docs/plantuml_Profile_visualization.txt
 docs/DEPLOYMENT.md
 deploy-v2.5.0.bat
 deploy-verification-docs.bat
+tests/logs/
