@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/12_unmount_backup.sh
-# @version 1.2.0
+# @version 1.3.0
 # @description Safely unmounts backup device for ALL profiles (security improvement)
 # @author Jo Zapf
+# @changed 2026-01-25 - Fixed race condition: Check if already unmounted by systemd before attempting umount
 # @changed 2026-01-22 - Fixed dynamic systemd unit detection (Bug fix for dev-data profile)
 # @requires BACKUP_MNT
 
@@ -42,38 +43,46 @@ systemctl stop "${SYSTEMD_UNIT}.mount" 2>/dev/null || true
 # Wait a moment for systemd to settle
 sleep 2
 
-# Force unmount for ALL profiles (security improvement: quasi-offline protection)
-echo "[12] Unmounting ${BACKUP_MNT}..."
-if umount "${BACKUP_MNT}" 2>/dev/null; then
-  echo "[12] Unmount successful - backup quasi-offline (ransomware protection)"
-elif umount -l "${BACKUP_MNT}" 2>/dev/null; then
-  echo "[12] Lazy unmount successful (busy filesystem)"
-  sleep 2
+# Check if mount point is still mounted before attempting unmount
+# This prevents false-positive errors when systemd already unmounted successfully
+if mountpoint -q "${BACKUP_MNT}"; then
+  echo "[12] Mount point still active, attempting unmount..."
+  
+  # Force unmount for ALL profiles (security improvement: quasi-offline protection)
+  if umount "${BACKUP_MNT}" 2>/dev/null; then
+    echo "[12] Unmount successful - backup quasi-offline (ransomware protection)"
+  elif umount -l "${BACKUP_MNT}" 2>/dev/null; then
+    echo "[12] Lazy unmount successful (busy filesystem)"
+    sleep 2
+  else
+    echo "[ERROR] Unmount failed - manual intervention required"
+    echo "[ERROR] Device: ${BACKUP_MNT}"
+    findmnt -M "${BACKUP_MNT}" 2>&1 || true
+    exit 1
+  fi
 else
-  echo "[ERROR] Unmount failed - manual intervention required"
-  echo "[ERROR] Device: ${BACKUP_MNT}"
-  findmnt -M "${BACKUP_MNT}" 2>&1 || true
-  exit 1
+  echo "[12] Already unmounted by systemd - backup quasi-offline (ransomware protection)"
 fi
 
 # Final sync
 sync
 
-# Verify unmount succeeded
+# Verify unmount succeeded (with 1 second grace period)
 sleep 1
-if findmnt -rn -t ext4 -M "${BACKUP_MNT}" >/dev/null 2>&1; then
-  # Derive systemd unit name from mount point
+if mountpoint -q "${BACKUP_MNT}"; then
+  # Still mounted - this is a problem
   SYSTEMD_UNIT=$(echo "${BACKUP_MNT}" | sed 's|^/||; s|/|-|g')
   
-  echo "[ERROR] Unmount failed - ext4 filesystem still mounted"
+  echo "[ERROR] Unmount verification failed - mount point still active"
   echo "[ERROR] Manual intervention required:"
   echo "  1. sudo systemctl stop ${SYSTEMD_UNIT}.automount"
   echo "  2. Close all file managers"
   echo "  3. sudo umount ${BACKUP_MNT}"
+  findmnt -M "${BACKUP_MNT}" 2>&1 || true
   exit 1
 fi
 
-echo "[12] Unmount successful"
+echo "[12] Unmount verified - device fully offline"
 
 # Copy log to backup location if it was set
 if [ -n "${BACKUP_LOG:-}" ] && [ -f "${LOCAL_LOG:-}" ]; then

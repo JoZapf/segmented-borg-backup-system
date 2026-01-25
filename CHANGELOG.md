@@ -39,6 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detects and rejects bind-mounts and overlays
   - Added confirmation message: "Confirmed: [PATH] is a proper block device mount"
 
+- **segments/12_unmount_backup.sh**: v1.2.0 → v1.3.0
+  - **Fixed Race Condition**: Now checks if mount point is still active before attempting unmount
+  - **Issue**: Script reported false-positive "Unmount failed" errors when systemd successfully unmounted
+  - **Root Cause**: Script tried to unmount after systemd already completed unmount operation
+  - **Solution**: Added `mountpoint -q` check before unmount attempt
+  - **Result**: Eliminates false error messages, clearer success reporting
+  - New message: "Already unmounted by systemd - backup quasi-offline (ransomware protection)"
+
 ### Fixed
 
 - **Root Filesystem Contamination**:
