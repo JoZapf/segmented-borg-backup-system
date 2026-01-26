@@ -5,6 +5,99 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-01-26
+
+### Changed
+
+- **segments/05_mount_backup.sh**: v1.4.0 → v2.0.0
+  - **Complete Rewrite**: Direct mount via `mount` command instead of automount triggering
+  - **Issue**: systemd automount created stacked mounts (root dir + device mount at same location)
+  - **Root Cause**: `x-systemd.automount` in fstab caused systemd to create overlayfs-like structure
+  - **Impact**: CRITICAL - Wrong device detected, backup failures, stacked mounts at boot
+  - **Solution**: Remove automount dependency, use simple direct mount
+  - **Benefits**:
+    - Eliminates stacked mount problem completely
+    - Simpler code (50% reduction)
+    - More reliable mount detection
+    - Faster mount operation (no automount delay)
+  - **Breaking Change**: Requires fstab modification (see Migration section)
+
+- **fstab Configuration**: Backup mount entries updated
+  - **Removed**: `x-systemd.automount` option (caused stacked mounts)
+  - **Removed**: `x-systemd.idle-timeout=300` (could unmount during backup!)
+  - **Added**: `noauto` option (manual mount only, no boot mount)
+  - **Kept**: `x-systemd.device-timeout=30` (optional, helps with device detection)
+  - **Impact**: Devices no longer mount automatically at boot
+  - **Benefit**: Clean mount state, segment 05 has full control
+
+### Fixed
+
+- **Stacked Mounts Problem**:
+  - **Symptom**: `findmnt` showed two mounts at `/mnt/extern_backup`:
+    ```
+    /mnt/extern_backup /dev/nvme0n1p2[/mnt/extern_backup]  ← ROOT!
+    /mnt/extern_backup /dev/sdc1                           ← Device
+    ```
+  - **Timeline**:
+    - 2026-01-26 10:04: Backup failed with "Wrong device mounted"
+    - systemd created mount-point directory on root at boot
+    - systemd automount layered device mount on top
+    - Segment 05 detected wrong device but couldn't fix it
+  - **Solution**: Remove automount, use direct mount with clean state
+
+### Migration
+
+**CRITICAL: Manual fstab update required!**
+
+This update changes how backup devices are mounted. You MUST update `/etc/fstab`:
+
+```bash
+# 1. Edit fstab
+sudo nano /etc/fstab
+
+# 2. Find these lines:
+UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
+UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
+
+# 3. Replace with (remove automount, add noauto):
+UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
+UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
+
+# Optional: Remove x-systemd.device-timeout=30 for even simpler config:
+UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,noauto 0 2
+UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,noauto 0 2
+
+# 4. Save and reload
+sudo systemctl daemon-reload
+
+# 5. Test mount
+sudo mount /mnt/extern_backup
+findmnt /mnt/extern_backup
+# Should show ONLY ONE mount line with /dev/sdc1
+
+# 6. Update backup system
+cd ~/Projekte/segmented-borg-backup-system
+git pull origin main
+sudo ./deploy.sh
+
+# 7. Test backup
+sudo /opt/backup-system/run-backup.sh system
+```
+
+**What changed:**
+- Devices no longer auto-mount at boot (segment 05 handles mounting)
+- No more systemd automount units (simpler, cleaner)
+- Eliminates stacked mount issue permanently
+
+**Rollback (if issues):**
+```bash
+# Revert fstab to old automount config
+sudo nano /etc/fstab
+# Add back: x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300
+# Remove: noauto
+sudo systemctl daemon-reload
+```
+
 ## [2.8.1] - 2026-01-25
 
 ### Added
