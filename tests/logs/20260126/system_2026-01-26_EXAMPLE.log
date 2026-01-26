@@ -1,0 +1,231 @@
+===============================================================================
+  BACKUP SYSTEM v2.8.2
+===============================================================================
+Profile: system
+Started: 2026-01-26T17:37:04+01:00
+===============================================================================
+
+[01] Validating configuration...
+[01] Configuration valid
+[01] Profile: system
+[01] Sources: /;/boot/efi
+[01] Target: /mnt/extern_backup/hostname_nvme0n1_System
+[01] Shelly: true
+[01] HDD Spindown: true
+
+[02] Initializing logging...
+===============================================================================
+  BACKUP SYSTEM v2.8.2
+===============================================================================
+Started: 2026-01-26T17:37:04+01:00
+Profile: system
+Local Log: /var/log/extern_backup/system_2026-01-26_173704.log
+===============================================================================
+
+[02] Logging initialized
+[02] Note: Full output is captured by run-backup.sh wrapper
+
+[03] Checking Shelly power control...
+[03] Powering on Shelly Plug at 192.168.X.X...
+[03] Shelly powered ON (auto-off after 43200s)
+[03] Waiting 20s for HDD spin-up...
+[03] Shelly power-on complete
+
+[04] Waiting for backup device...
+[04] Device: /dev/disk/by-uuid/UUID-EXTERNAL-HDD
+[04] Timeout: 180s
+[04] Device available after 1s
+[04] Device info:
+NAME MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sdc1   8:33   0  3,6T  0 part /mnt/extern_backup
+
+[05] Mounting backup device...
+[05] Backup device already mounted correctly
+[05] Device: /dev/sdc1
+[05] UUID: UUID-EXTERNAL-HDD
+
+[06] Validating mount...
+[06] Mounted device: /dev/sdc1
+[06] UUID: UUID-EXTERNAL-HDD
+[06] Filesystem: ext4
+[06] Mount validation successful
+[06] Confirmed: /mnt/extern_backup is a proper block device mount
+[06] Backup log will be saved to: /mnt/extern_backup/hostname_nvme0n1_System/logs/system_.log
+
+[07] Checking Borg repository...
+[07] Repository exists: /mnt/extern_backup/hostname_nvme0n1_System/borgrepo
+[07] Repository info:
+Repository ID: REPO_ID_HASH
+Location: /mnt/extern_backup/hostname_nvme0n1_System/borgrepo
+Encrypted: Yes (repokey BLAKE2b)
+Cache: /root/.cache/borg/REPO_ID_HASH
+Security dir: /root/.config/borg/security/REPO_ID_HASH
+------------------------------------------------------------------------------
+                       Original size      Compressed size    Deduplicated size
+All archives:               12.09 TB            850.97 GB             75.21 GB
+
+                       Unique chunks         Total chunks
+Chunk index:                  457783              6406208
+
+[08] Creating Borg backup archive...
+[08] Archive name pattern: hostname-nvme0n1-system-{now:%Y-%m-%d_%H%M%S}
+[08] Sources: /;/boot/efi
+[08] Compression: zstd,6
+[08] Option: one-file-system (stay within filesystem boundaries)
+[08] Option: exclude-caches (skip cache directories)
+[08] Exclude: /proc
+[08] Exclude: /sys
+[08] Exclude: /dev
+[08] Exclude: /run
+[08] Exclude: /tmp
+[08] Exclude: /var/tmp
+[08] Exclude: /mnt/extern_backup
+
+[08] Starting backup...
+[08] Command: borg create --stats --progress --compression zstd,6 --one-file-system --exclude-caches [...]
+
+[... Borg progress output showing file scanning and backup ...]
+9.32 GB O 442.29 MB C 335.73 kB D 552 N var/lib/apt/lists...
+20.07 GB O 9.50 GB C 982.08 kB D 16672 N var/lib/swcatalog...
+28.74 GB O 10.15 GB C 1.90 MB D 19953 N var/log/syslog
+/var/log/syslog: file changed while we backed it up
+29.19 GB O 10.22 GB C 3.33 MB D 20006 N var/log/journal/system.journal
+/var/log/journal/system.journal: file changed while we backed it up
+[... approximately 490,000 files backed up ...]
+147.80 GB O 40.29 GB C 15.51 MB D 279828 N home/user/.local/...
+175.79 GB O 63.66 GB C 15.51 MB D 434402 N home/user/docker/...
+1.20 TB O 75.81 GB C 15.53 MB D 456955 N boot/grub/...
+1.20 TB O 76.25 GB C 15.53 MB D 490371 N root/.local/share
+
+Saving files cache
+Saving chunks cache
+Saving cache config
+------------------------------------------------------------------------------
+Repository: /mnt/extern_backup/hostname_nvme0n1_System/borgrepo
+Archive name: hostname-nvme0n1-system-2026-01-26_173726
+Archive fingerprint: ARCHIVE_FINGERPRINT_HASH
+Time (start): Mon, 2026-01-26 17:37:26
+Time (end):   Mon, 2026-01-26 17:38:14
+Duration: 47.98 seconds
+Number of files: 490787
+Utilization of max. archive size: 0%
+------------------------------------------------------------------------------
+                       Original size      Compressed size    Deduplicated size
+This archive:                1.21 TB             85.01 GB             17.00 MB
+All archives:               13.30 TB            935.98 GB             75.23 GB
+
+                       Unique chunks         Total chunks
+Chunk index:                  457909              7047272
+------------------------------------------------------------------------------
+
+[08] Backup completed with warnings (files changed during backup)
+[08] Latest archive: hostname-nvme0n1-system-2026-01-26_173726
+
+===============================================================================
+  BACKUP CREATED - EXECUTING POST-BACKUP CLEANUP
+===============================================================================
+
+===============================================================================
+  POST-BACKUP (Profile-Specific)
+===============================================================================
+
+[POST-01] ===================================================================
+[POST-01] Starting recovery key export for profile: system
+[POST-01] ===================================================================
+[POST-01] Validating recovery configuration...
+[POST-01] Recovery configuration valid
+[POST-01] Getting repository ID from: /mnt/extern_backup/hostname_nvme0n1_System/borgrepo
+[POST-01] Repository ID: REPO_ID_HASH
+[POST-01] Short repository ID: REPO_SHORT
+[POST-01] Checking for existing recovery export...
+[POST-01] Pattern: system_*_REPO_SHORT_*.zip
+[POST-01] Found existing recovery export(s):
+[POST-01]   - system_hostname_REPO_SHORT_2026-01-21.zip
+[POST-01] Recovery export already exists for this repository
+[POST-01] Skipping export to avoid duplicates
+[POST-01] Delete existing export if you want to recreate it
+
+===============================================================================
+  POST-BACKUP COMPLETED - SERVICES SHOULD BE ONLINE
+===============================================================================
+
+===============================================================================
+  VERIFICATION AND PRUNING
+===============================================================================
+
+[09] Verifying backup integrity...
+[09] Verifying archive: hostname-nvme0n1-system-2026-01-26_173726
+[09] This performs a full data integrity check...
+
+[09] Verification successful - archive integrity confirmed
+
+[10] Pruning old archives...
+[10] Retention policy:
+[10]   Daily: 7
+[10]   Weekly: 4
+[10]   Monthly: 6
+
+[10] Pruning archives...
+Keeping archive (rule: daily #1):        hostname-nvme0n1-system-2026-01-26_173726 Mon, 2026-01-26 17:37:26
+Pruning archive (1/1):                   hostname-nvme0n1-system-2026-01-26_151940 Mon, 2026-01-26 15:19:40
+Keeping archive (rule: daily #2):        hostname-nvme0n1-system-2026-01-25_172605 Sun, 2026-01-25 17:26:05
+Keeping archive (rule: daily #3):        hostname-nvme0n1-system-2026-01-24_185119 Sat, 2026-01-24 18:51:20
+Keeping archive (rule: daily #4):        hostname-nvme0n1-system-2026-01-23_153018 Fri, 2026-01-23 15:30:18
+Keeping archive (rule: daily #5):        hostname-nvme0n1-system-2026-01-22_150733 Thu, 2026-01-22 15:07:33
+Keeping archive (rule: daily #6):        hostname-nvme0n1-system-2026-01-21_171035 Wed, 2026-01-21 17:10:35
+Keeping archive (rule: daily #7):        hostname-nvme0n1-system-2026-01-19_053614 Mon, 2026-01-19 05:36:14
+Keeping archive (rule: weekly #1):       hostname-nvme0n1-system-2026-01-17_161313 Sat, 2026-01-17 16:13:13
+Keeping archive (rule: weekly #2):       hostname-nvme0n1-system-2026-01-10_135453 Sat, 2026-01-10 13:54:53
+Keeping archive (rule: weekly[oldest] #3): hostname-nvme0n1-system-2026-01-07_142915 Wed, 2026-01-07 14:29:15
+------------------------------------------------------------------------------
+                       Original size      Compressed size    Deduplicated size
+Deleted data:               -1.21 TB            -85.25 GB             -3.92 MB
+All archives:               12.09 TB            850.73 GB             75.22 GB
+
+                       Unique chunks         Total chunks
+Chunk index:                  457855              6406184
+------------------------------------------------------------------------------
+
+[10] Prune completed successfully
+[10] Compacting repository...
+[10] Compact completed successfully
+[10] Repository statistics:
+                       Original size      Compressed size    Deduplicated size
+
+===============================================================================
+  ALL MAIN SEGMENTS COMPLETED
+===============================================================================
+
+===============================================================================
+  CLEANUP
+===============================================================================
+
+[11] Checking HDD spindown...
+[11] Spinning down HDD: /dev/disk/by-id/usb-VENDOR_MODEL_SERIAL-0:0
+[11] Using hdparm for spindown...
+
+/dev/disk/by-id/usb-VENDOR_MODEL_SERIAL-0:0:
+ issuing standby command
+[11] HDD set to standby mode (heads parked)
+
+/dev/disk/by-id/usb-VENDOR_MODEL_SERIAL-0:0:
+ issuing sleep command
+[11] HDD spun down completely
+
+[12] Unmounting backup device...
+[12] Syncing filesystem buffers...
+[12] Checking for open file handles...
+[12] Stopping systemd mount units...
+[12] Already unmounted by systemd - backup quasi-offline (ransomware protection)
+[12] Unmount verified - device fully offline
+
+[13] Checking Shelly power control...
+[13] Powering off Shelly Plug at 192.168.X.X...
+[13] Shelly powered OFF
+[13] Shelly power-off complete
+
+===============================================================================
+  BACKUP COMPLETED SUCCESSFULLY
+===============================================================================
+Finished: 2026-01-26T18:54:55+01:00
+===============================================================================
