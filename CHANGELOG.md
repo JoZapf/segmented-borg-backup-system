@@ -45,6 +45,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Segment 05 detected wrong device but couldn't fix it
   - **Solution**: Remove automount, use direct mount with clean state
 
+- **USB Autosuspend Issue** (discovered during v2.8.2 testing):
+  - **Symptom**: External USB backup devices disconnect during backup with I/O errors
+  - **Timeline**:
+    - 2026-01-26 17:04: Backup failed during Segment 08 (Borg create)
+    - USB reset after 43 seconds, followed by disconnect 11 seconds later
+    - EXT4 errors: "Cannot read block bitmap", "I/O error while writing superblock"
+    - Device completely disappeared from system during cleanup
+  - **Root Cause**: Kernel USB autosuspend (default: 2 seconds) suspends USB device while Borg buffers data in memory
+  - **Analysis**:
+    - Borg writes data in chunks with buffering between writes
+    - Kernel detects >2s idle period → suspends USB device
+    - Borg attempts next write → USB device needs wake-up
+    - USB resume fails → I/O errors → complete disconnect
+  - **Solution**: Disable USB autosuspend via kernel parameter
+  - **Fix**: Add to `/etc/default/grub`:
+    ```bash
+    # Edit GRUB configuration
+    sudo nano /etc/default/grub
+    
+    # Modify GRUB_CMDLINE_LINUX_DEFAULT line:
+    GRUB_CMDLINE_LINUX_DEFAULT="quiet splash usbcore.autosuspend=-1"
+    
+    # Update GRUB and reboot
+    sudo update-grub
+    sudo reboot
+    ```
+  - **Verification**: `cat /sys/module/usbcore/parameters/autosuspend` should show `-1` (disabled)
+  - **Immediate Workaround** (without reboot):
+    ```bash
+    # Disable autosuspend temporarily (until next reboot)
+    echo -1 | sudo tee /sys/module/usbcore/parameters/autosuspend
+    
+    # Disable for all currently connected USB devices
+    for device in /sys/bus/usb/devices/*/power/control; do
+      echo on | sudo tee $device 2>/dev/null || true
+    done
+    ```
+  - **Note**: This is a system-level configuration, not a code change. Affects all USB devices on the system.
+
 ### Migration
 
 **CRITICAL: Manual fstab update required!**
