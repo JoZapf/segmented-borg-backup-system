@@ -94,17 +94,17 @@ This update changes how backup devices are mounted. You MUST update `/etc/fstab`
 # 1. Edit fstab
 sudo nano /etc/fstab
 
-# 2. Find these lines:
-UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
-UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
+# 2. Find these lines (replace UUIDs with your actual device UUIDs):
+UUID=YOUR-INTERNAL-HDD-UUID /mnt/system_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
+UUID=YOUR-EXTERNAL-HDD-UUID /mnt/extern_backup ext4 defaults,nofail,acl,x-systemd.automount,x-systemd.device-timeout=30,x-systemd.idle-timeout=300 0 2
 
 # 3. Replace with (remove automount, add noauto):
-UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
-UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
+UUID=YOUR-INTERNAL-HDD-UUID /mnt/system_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
+UUID=YOUR-EXTERNAL-HDD-UUID /mnt/extern_backup ext4 defaults,nofail,acl,noauto,x-systemd.device-timeout=30 0 2
 
 # Optional: Remove x-systemd.device-timeout=30 for even simpler config:
-UUID=9d5bdf3a-ede2-472e-a463-741836755d1b /mnt/system_backup ext4 defaults,nofail,acl,noauto 0 2
-UUID=f2c4624a-72ee-5e4b-85f8-a0d7f02e702f /mnt/extern_backup ext4 defaults,nofail,acl,noauto 0 2
+UUID=YOUR-INTERNAL-HDD-UUID /mnt/system_backup ext4 defaults,nofail,acl,noauto 0 2
+UUID=YOUR-EXTERNAL-HDD-UUID /mnt/extern_backup ext4 defaults,nofail,acl,noauto 0 2
 
 # 4. Save and reload
 sudo systemctl daemon-reload
@@ -263,7 +263,7 @@ sudo /opt/backup-system/run-backup.sh system
 **Recovery from Mount Failure:**
 ```bash
 # Check Shelly status (for system-Profile)
-curl http://192.168.10.164/relay/0
+curl http://SHELLY-IP-ADDRESS/relay/0
 
 # Check device availability
 lsblk | grep sdc1
@@ -399,10 +399,10 @@ sudo ./deploy.sh
 **Optional cleanup** (recommended):
 ```bash
 # Remove old uncompressed DB dumps manually
-sudo rm /mnt/system_backup/creaThink_docker-data/database-dumps/nextcloud_db-dump_*-*-*_*-*-*.sql
+sudo rm /mnt/system_backup/hostname_docker-data/database-dumps/nextcloud_db-dump_*-*-*_*-*-*.sql
 
 # Verify cleanup
-ls -lh /mnt/system_backup/creaThink_docker-data/database-dumps/
+ls -lh /mnt/system_backup/hostname_docker-data/database-dumps/
 # Should only show .sql.gz files
 ```
 
@@ -417,7 +417,7 @@ export DB_DUMP_RETENTION="14"  # Keep 14 dumps instead of default 7
 **Test 1 - Segment 12 Dynamic Unit Detection:**
 ```bash
 # Trigger unmount error (open file manager in backup dir)
-nautilus /mnt/system_backup/creaThink_docker-data &
+nautilus /mnt/system_backup/hostname_docker-data &
 sudo /opt/backup-system/run-backup.sh dev-data
 
 # Expected output:
@@ -1102,7 +1102,7 @@ Next Backup:
   - Smart detection: Only creates new exports when repository is new or keys missing
   - Prevents duplicate exports via repository ID tracking
   - ZIP filename format: `{PROFILE}_{HOSTNAME}_{REPO-ID-SHORT}_{DATE}.zip`
-  - Example: `system_CREA-think_2d92c4c5_2026-01-16.zip`
+  - Example: `system_hostname_2d92c4c5_2026-01-16.zip`
   - ZIP contents:
     - `repo-key.txt`: Exported Borg repository key
     - `recovery-info.txt`: Complete recovery metadata (UUIDs, paths, credentials)
