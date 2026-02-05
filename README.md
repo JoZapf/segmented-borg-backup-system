@@ -271,7 +271,7 @@ backup-system/
 
 
 <p align="center">
-  <img src="docs/Segmented_Borg_Backup_System_Architecture_Overview_v2.5.0.png" width="1100" alt="Segmented Borg Backup System">
+  <img src="docs/Segmented_Borg_Backup_System___v2.8.3_Architecture.svg" width="1100" alt="Segmented Borg Backup System">
 </p>
 
 
