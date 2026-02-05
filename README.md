@@ -32,6 +32,9 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **🔑 Automated Recovery Keys** - Automatic export of repository keys for disaster recovery
 
 ---
+## 🎯 Features already in pipeline
+
+- **📩 SMS/RCS Notifyer** - Reliable API based optional and segmentend notifyer for critical states through SMS/RCS
 
 ## 🎯 Planed  Features
 
@@ -39,7 +42,7 @@ Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD
 - **🗂️ Auto-Close File Managers** - Safe & Automated Unmount
 - **🔔 Pop-Up Notifyer** - Reliable notifyer for errors
 - **📩 E-Mail Notifyer** - Reliable notifyer for errors
-AUTO_CLOSE_FILE_MANAGERS
+
 ---
 
 ## 📦 Quick Start
