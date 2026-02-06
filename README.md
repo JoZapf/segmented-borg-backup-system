@@ -6,6 +6,7 @@
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
 [![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
 [![Security](https://img.shields.io/badge/security-secrets%20management-orange.svg)](docs/SECURITY.md)
+[![API Docs](https://img.shields.io/badge/docs-API%20reference-purple.svg)](docs/api/)
 
 Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management & optional Docker stop/start + DB dump.
 
@@ -78,6 +79,23 @@ sudo ./install-systemd-units.sh
 # 8. Test manual backup
 sudo /opt/backup-system/run-backup.sh system
 ```
+
+---
+
+## 📚 Documentation
+
+**Auto-Generated API Reference:**
+
+View in [`docs/api/`](docs/api/) - Complete reference for all 18 segments with extracted variables, commands, exit codes, and error messages.
+
+**Manual Documentation:**
+- [Installation Guide](docs/INSTALLATION.md) - Complete setup instructions
+- [Deployment Guide](docs/DEPLOYMENT.md) - SMB and Git workflows  
+- [Profiles Guide](docs/PROFILES.md) - Profile configuration
+- [Segments Overview](docs/SEGMENTS.md) - Segment architecture
+- [systemd Integration](docs/SYSTEMD.md) - Timer and mount configuration
+- [Security Guide](docs/SECURITY.md) - Security best practices
+- [Testing Guide](docs/TESTING.md) - Verification procedures
 
 ---
 
