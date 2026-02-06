@@ -51,17 +51,6 @@ Copy and customize with your real values.
 
 ---
 
-## AI Assistants
-
-Project includes `AI_GUIDELINES.md` and git hooks to prevent:
-- AI credits in commits
-- Unauthorized author modifications
-- Attribution claims
-
-See [AI_GUIDELINES.md](AI_GUIDELINES.md) for details.
-
----
-
 ## Pre-Commit Checklist
 
 Before pushing to public repositories:
