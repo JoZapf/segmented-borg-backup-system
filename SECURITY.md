@@ -1,68 +1,20 @@
-# Security & Privacy Guide
+# Security
 
-## Overview
+## Sensitive Data Protection
 
-This backup system handles sensitive information that must be protected from unauthorized access and should never be committed to version control.
+**NEVER commit to Git:**
+- `config/common.env` - Shelly IP, shared settings
+- `config/profiles/*.env` - UUIDs, hostnames, credentials  
+- `/root/.config/borg/passphrase` - Backup encryption key
+- `logs/` - May contain sensitive paths
 
----
-
-## 🔒 Sensitive Data Classification
-
-### CRITICAL (Never share publicly)
-- **Borg Passphrase** (`/root/.config/borg/passphrase`)
-  - Required to decrypt backups
-  - Without this, backups are unrecoverable
-  - Store securely offline (password manager, encrypted USB)
-
-### PRIVATE (Do not commit to Git)
-- **HDD UUIDs** (in `config/profiles/*.env`)
-  - Unique identifier for your backup drives
-  - Not directly exploitable, but reveals hardware config
-  
-- **IP Addresses** (in `config/common.env`)
-  - Shelly Plug IP address
-  - Reveals local network topology
-  
-- **Hostnames** (in `config/profiles/*.env`)
-  - Archive prefixes and target directories
-  - Can reveal system/organization names
-  
-- **Device Paths** (in `config/profiles/*.env`)
-  - HDD device names (/dev/sdc, etc.)
-  - Reveals hardware configuration
-
-### PUBLIC (Safe to share)
-- All code in `segments/`, `tests/`, `systemd/`
-- Documentation in `docs/`
-- Example configurations (`*.example` files)
+**Protected by `.gitignore`** - These files are automatically excluded.
 
 ---
 
-## 🛡️ Protection Mechanisms
+## File Permissions
 
-### 1. .gitignore Protection
-
-The following files are **automatically excluded from Git**:
-
-```
-config/common.env           # Contains Shelly IP
-config/profiles/system.env  # Contains UUIDs, hostnames
-config/profiles/data.env    # Contains UUIDs, hostnames
-```
-
-### 2. Example Files (Safe Templates)
-
-Anonymized versions provided for reference:
-
-```
-config/common.env.example           # Template with placeholders
-config/profiles/system.env.example  # Template with placeholders
-config/profiles/data.env.example    # Template with placeholders
-```
-
-### 3. File Permissions
-
-Configuration files should be readable only by root:
+Production configs must be root-only:
 
 ```bash
 sudo chmod 600 /opt/backup-system/config/common.env
@@ -72,175 +24,67 @@ sudo chmod 600 /root/.config/borg/passphrase
 
 ---
 
-## 🚨 What to Do Before Sharing
+## Templates
 
-### Sharing Code on GitHub
+Use `*.example` files as templates:
+- `config/common.env.example`
+- `config/profiles/system.env.example`
+- `config/profiles/data.env.example`
+- `config/profiles/dev-data.env.example`
 
-✅ **Safe to commit:**
-- All code files (`main.sh`, `segments/*.sh`)
-- All documentation (`docs/*.md`)
-- All tests (`tests/*.test.sh`)
-- Example configs (`*.example`)
-- systemd unit files
-
-❌ **NEVER commit:**
-- Actual config files (`common.env`, `system.env`, `data.env`)
-- Borg passphrase
-- Log files
-- Any files containing real UUIDs, IPs, or hostnames
-
-### Sharing Logs for Troubleshooting
-
-When sharing logs, **redact** the following:
-
-```bash
-# Replace real values with placeholders
-sed -i 's/f2c4624a-72ee-5e4b-85f8-a0d7f02e702f/REDACTED-UUID/g' logfile.txt
-sed -i 's/192\.168\.10\.164/192.168.X.X/g' logfile.txt
-sed -i 's/yourhostname/HOSTNAME/g' logfile.txt
-```
+Copy and customize with your real values.
 
 ---
 
-## 🔐 Backup Security Best Practices
+## Borg Passphrase
 
-### 1. Borg Passphrase
+**Critical:** Without the passphrase, backups are unrecoverable.
 
-**Storage:**
-- ✅ Password manager (LastPass, 1Password, Bitwarden)
-- ✅ Encrypted USB drive (stored separately from backup HDD)
-- ✅ Printed on paper in safe
-- ❌ Plain text file on same computer
-- ❌ Email to yourself
-- ❌ Cloud storage (unless encrypted)
+**Store securely:**
+- Password manager (recommended)
+- Encrypted USB drive (offline)
+- Printed backup in safe
 
-**Strength:**
-```bash
-# WEAK (❌)
-mypassword
-
-# MEDIUM (⚠️)
-MyP@ssw0rd2024
-
-# STRONG (✅)
-correct-horse-battery-staple-7394
-# or
-Tr0ub4dor&3-elephant-window-cascade
-```
-
-### 2. Config Files
-
-**On Production System:**
-```bash
-# Correct permissions
--rw------- root root common.env
--rw------- root root system.env
-
-# Anyone can read (❌ BAD!)
--rw-r--r-- root root common.env
-```
-
-**Backup Your Configs:**
-```bash
-# Create encrypted backup of configs
-sudo tar czf ~/backup-configs.tar.gz /opt/backup-system/config/
-gpg --symmetric --cipher-algo AES256 ~/backup-configs.tar.gz
-# Store backup-configs.tar.gz.gpg securely offline
-```
-
-### 3. Network Security
-
-**Shelly Plug:**
-- ✅ Use static IP or DHCP reservation
-- ✅ Keep on isolated VLAN (if possible)
-- ✅ Disable cloud access if not needed
-- ✅ Update firmware regularly
-- ❌ Expose to internet
+**Never:**
+- Plain text on system
+- Email or cloud (unless encrypted)
 
 ---
 
-## 📋 Security Checklist
+## AI Assistants
 
-Before going public with your backup system:
+Project includes `AI_GUIDELINES.md` and git hooks to prevent:
+- AI credits in commits
+- Unauthorized author modifications
+- Attribution claims
 
-- [ ] Verify `.gitignore` includes actual config files
-- [ ] Check no real UUIDs in committed files (`git grep "f2c4624a"`)
-- [ ] Check no real IPs in committed files (`git grep "192.168"`)
-- [ ] Check no hostnames in committed files (`git grep "yourhostname"`
-- [ ] Borg passphrase backed up securely offline
-- [ ] Config files have 600 permissions
-- [ ] Example files contain only placeholders
-- [ ] Logs directory not committed (`logs/` in .gitignore)
-- [ ] No test archives committed (`.zip`, `.tar.gz` in .gitignore)
+See [AI_GUIDELINES.md](AI_GUIDELINES.md) for details.
 
 ---
 
-## 🔍 Verifying Clean Repository
+## Pre-Commit Checklist
+
+Before pushing to public repositories:
 
 ```bash
-# Check for potential leaks
-cd /path/to/backup-system
-git grep -i "uuid" | grep -v "REPLACE"
-git grep -i "192.168"
-git grep -i "your-hostname"
-
-# Check .gitignore is working
+# Verify no sensitive data leaked
+git grep -i "uuid" | grep -v "REPLACE" | grep -v "example"
+git grep "192.168"
 git status --ignored
 
-# Check what would be committed
-git add -A --dry-run
+# Ensure hooks active
+test -x .git/hooks/commit-msg && echo "✓ Hook active"
 ```
 
 ---
 
-## 🆘 If You Accidentally Commit Sensitive Data
+## Backup System Security Features
 
-### Remove from Git History
+**Built-in protections:**
+- UUID validation prevents wrong disk writes
+- Borg encryption (repokey BLAKE2b)
+- Safe HDD head parking before power-off
+- Comprehensive error handling
+- Dual logging for audit trail
 
-```bash
-# Remove file from all commits (⚠️ REWRITES HISTORY!)
-git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch config/profiles/system.env" \
-  --prune-empty --tag-name-filter cat -- --all
-
-# Force push (⚠️ ONLY if not yet public!)
-git push --force --all
-```
-
-### After Public Exposure
-
-If sensitive data was already pushed publicly:
-
-1. **Borg Passphrase leaked?**
-   - Create new Borg repository with new passphrase
-   - Migrate backups to new repository
-   - Old backups are compromised!
-
-2. **UUID/IP leaked?**
-   - Low risk if no other info leaked
-   - Consider rotating if very security-sensitive
-
-3. **Hostname leaked?**
-   - Low risk unless combined with other info
-   - May reveal personal/company identity
-
----
-
-## 📚 References
-
-- [Git Secret Management](https://git-secret.io/)
-- [Borg Security Docs](https://borgbackup.readthedocs.io/en/stable/quickstart.html#encryption)
-- [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
-
----
-
-## ✅ Summary
-
-**Golden Rules:**
-1. Never commit actual config files to Git
-2. Always use `.example` files for templates
-3. Back up Borg passphrase securely offline
-4. Use 600 permissions for sensitive files
-5. Redact sensitive data before sharing logs
-
-**Remember:** Security is not about perfection, it's about making attack harder than the value of the data.
+See [VERIFICATION.md](docs/VERIFICATION.md) for testing procedures.
