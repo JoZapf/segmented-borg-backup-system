@@ -5,7 +5,7 @@
 [![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)](https://www.linux.org/)
 [![Shell](https://img.shields.io/badge/shell-bash-89e051.svg)](https://www.gnu.org/software/bash/)
 [![BorgBackup](https://img.shields.io/badge/BorgBackup-1.2%2B-00ADD8.svg)](https://borgbackup.readthedocs.io/)
-[![Security](https://img.shields.io/badge/security-secrets%20management-orange.svg)](docs/SECURITY.md)
+[![Security](https://img.shields.io/badge/security-secrets%20management-orange.svg)](./SECURITY.md)
 [![API Docs](https://img.shields.io/badge/docs-API%20reference-purple.svg)](docs/api/)
 
 Profile-based backup orchestration for Ubuntu using BorgBackup with external HDD power management & optional Docker stop/start + DB dump.
