@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-02-09
+
+### Fixed
+
+- **CRITICAL**: Fixed execution order - PRE segments ran before backup target was mounted
+  - **Issue (dev-data)**: `pre_01_nextcloud_db_dump.sh` failed with `mkdir: Vorgang nicht zulässig` because TARGET_DIR was not yet mounted
+  - **Root Cause**: PRE_BACKUP_SEGMENTS executed before segments 03-06 (Shelly, device-wait, mount, validate-mount)
+  - **Solution**: New `EARLY_SEGMENTS` phase (01-06) runs before PRE_BACKUP_SEGMENTS
+
+- **CRITICAL**: Fixed systemd automount creating root-filesystem bind mounts at backup mountpoints
+  - **Issue (system)**: `/dev/nvme1n1p2` (root FS) was bound to `/mnt/extern_backup`, blocking the real backup device
+  - **Root Cause**: `x-systemd.automount` in fstab triggered before USB HDD was available (Shelly off), systemd created fallback bind mount from root FS
+  - **Solution**: Removed automount from fstab, masked automount unit, added detection in code
+
+### Changed
+
+- **main.sh**: v2.8.3 → v2.9.0
+  - **New**: `EARLY_SEGMENTS` array (segments 01-06) executes before `PRE_BACKUP_SEGMENTS`
+  - **Changed**: `MAIN_SEGMENTS_PART1` now contains only segments 07-08 (Borg init + backup)
+  - **New execution order**: EARLY → PRE_BACKUP → MAIN_PART1 → POST_BACKUP → MAIN_PART2 → CLEANUP
+
+- **segments/05_mount_backup.sh**: v2.1.0 → v2.2.0
+  - **New**: Root-filesystem detection in `safe_unmount()` - skips expensive `fuser` analysis when root FS is mounted at backup point (previously listed 400+ system processes)
+  - **New**: Stacked mount detection (Phase 0) in `validate_and_mount()` - detects and resolves multiple devices on same mountpoint before normal validation
+  - **New**: Recovery instructions for systemd automount misconfiguration
+
+- **segments/pre_01_nextcloud_db_dump.sh**: v2.1.0 → v2.2.0
+  - **New**: UUID validation before `mkdir -p` on TARGET_DIR (defense-in-depth)
+  - Verifies TARGET_DIR is on expected backup filesystem via `findmnt` + `blkid`
+  - Prevents writing to wrong mount (e.g. root filesystem or unmounted autofs layer)
+
+### Infrastructure (Production System)
+
+- **fstab**: Removed `x-systemd.automount` and `x-systemd.idle-timeout`, added `noauto` for extern_backup
+- **systemd**: Masked `mnt-extern_backup.automount` (generator kept recreating it despite fstab fix)
+- **systemd**: Disabled and stopped `mnt-system_backup.automount` + `mnt-system_backup.mount`
+
+### Documentation
+
+- **docs/fehleranalyse_2026-02-09.md**: Complete root cause analysis (German) with error logs, architecture diagrams, and 5 prioritized solution measures
+
+### Migration
+
+**Code update (automatic):**
+```bash
+cd ~/Projekte/segmented-borg-backup-system
+git pull origin main
+```
+
+**Production system (manual, already applied 2026-02-09):**
+```bash
+# 1. Fix fstab - remove automount for extern_backup
+sudo sed -i 's|x-systemd.automount,||; s|,x-systemd.idle-timeout=300||' /etc/fstab
+# Add noauto if not present
+
+# 2. Mask automount unit
+sudo systemctl mask mnt-extern_backup.automount
+
+# 3. Disable system_backup automount
+sudo systemctl disable --now mnt-system_backup.automount
+sudo systemctl disable --now mnt-system_backup.mount
+
+# 4. Reload
+sudo systemctl daemon-reload
+
+# 5. Verify
+systemctl status mnt-extern_backup.automount  # Should show "masked"
+findmnt -t autofs  # Should be empty for backup mounts
+```
+
+---
+
 ## [2.8.3] - 2026-02-04
 
 ### Fixed
