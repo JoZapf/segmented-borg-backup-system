@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/pre_01_nextcloud_db_dump.sh
-# @version 2.1.0
+# @version 2.2.0
 # @description Dumps Nextcloud database using Docker exec (container-based approach)
 # @author Jo Zapf
+# @changed 2026-02-09 - Added TARGET_DIR UUID validation before mkdir (defense-in-depth)
 # @changed 2026-01-22 - Improved cleanup: handles both .sql and .sql.gz, configurable retention
 # @requires NEXTCLOUD_ENABLED, NEXTCLOUD_DOCKER_*, TARGET_DIR
 
@@ -63,6 +64,34 @@ done
 echo "[PRE-01] Nextcloud App Container: ${NEXTCLOUD_DOCKER_APP_CONTAINER}"
 echo "[PRE-01] Nextcloud DB Container: ${NEXTCLOUD_DOCKER_DB_CONTAINER}"
 echo "[PRE-01] Database: ${NEXTCLOUD_DB_NAME}"
+
+# ============================================================================
+# SAFETY CHECK: Validate TARGET_DIR is on correct backup filesystem
+# @changed 2026-02-09 - Prevents writing to wrong mount (e.g. root filesystem)
+#   See docs/fehleranalyse_2026-02-09.md
+# ============================================================================
+if [ -n "${BACKUP_UUID:-}" ]; then
+  MOUNTED_DEV=$(findmnt -rn -t ext4 -o SOURCE -T "${TARGET_DIR}" 2>/dev/null || echo "")
+  if [ -n "$MOUNTED_DEV" ]; then
+    MOUNTED_UUID=$(blkid -s UUID -o value "$MOUNTED_DEV" 2>/dev/null || echo "")
+    if [ "$MOUNTED_UUID" != "$BACKUP_UUID" ]; then
+      echo "[ERROR] TARGET_DIR is NOT on the expected backup device!"
+      echo "[ERROR] Path: ${TARGET_DIR}"
+      echo "[ERROR] Mounted device: $MOUNTED_DEV"
+      echo "[ERROR] Found UUID: ${MOUNTED_UUID:-<unknown>}"
+      echo "[ERROR] Expected UUID: $BACKUP_UUID"
+      echo "[ERROR] Possible cause: Backup drive not mounted or wrong mount"
+      exit 1
+    fi
+    echo "[PRE-01] Target filesystem validated (UUID: ${MOUNTED_UUID})"
+  else
+    echo "[ERROR] TARGET_DIR is not on any ext4 filesystem: ${TARGET_DIR}"
+    echo "[ERROR] Is the backup drive mounted?"
+    exit 1
+  fi
+else
+  echo "[WARN] BACKUP_UUID not set - skipping target filesystem validation"
+fi
 
 # Create database dumps directory
 DB_DUMP_DIR="${TARGET_DIR}/database-dumps"

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 2.1.0
+# @version 2.2.0
 # @description Mounts backup device with robust error recovery
 # @author Jo Zapf
+# @changed 2026-02-09 - Added root-FS detection in safe_unmount + stacked mount detection
 # @changed 2026-02-04 - Added multi-stage error recovery (backward compatible)
 # @requires BACKUP_MNT, TARGET_DIR, BACKUP_UUID, BACKUP_DEV
 
@@ -141,6 +142,30 @@ safe_unmount() {
     
     echo "[WARN] ⚠ All non-destructive unmount attempts failed"
     echo "[WARN] Analyzing blocking processes for safe termination..."
+    
+    # ========================================================================
+    # Early detection: Root filesystem mounted at backup point?
+    # @changed 2026-02-09 - Skip expensive fuser analysis when root FS is
+    #   mounted here (would list ALL system processes). See fehleranalyse.
+    # ========================================================================
+    local mounted_source
+    mounted_source=$(findmnt -rn -o SOURCE -M "$mount_point" 2>/dev/null | head -1 || echo "")
+    local root_source
+    root_source=$(findmnt -rn -o SOURCE -M "/" 2>/dev/null || echo "")
+    
+    if [ -n "$mounted_source" ] && [ -n "$root_source" ] && [ "$mounted_source" = "$root_source" ]; then
+        echo ""
+        echo "[ERROR] ⛔ ROOT FILESYSTEM is mounted at $mount_point!"
+        echo "[ERROR] Mounted: $mounted_source (same as /)"
+        echo "[ERROR] This is a systemd automount misconfiguration."
+        echo "[ERROR] Skipping process analysis (would list ALL system processes)."
+        echo ""
+        echo "[ERROR] Recovery:"
+        echo "[ERROR]   sudo systemctl stop $(systemd-escape -p "$mount_point").automount"
+        echo "[ERROR]   sudo umount -l $mount_point"
+        echo "[ERROR]   sudo systemctl daemon-reload"
+        return 1
+    fi
     
     # Check if fuser is available
     if ! command -v fuser >/dev/null 2>&1; then
@@ -312,6 +337,34 @@ safe_unmount() {
 #   # Returns 0 if mount successful or already correct
 validate_and_mount() {
     echo "[05] Validating mount state..."
+    
+    # ========================================================================
+    # Phase 0: Detect stacked mounts (multiple devices on same mount point)
+    # @changed 2026-02-09 - Early detection of automount-induced stacked mounts
+    #   See docs/fehleranalyse_2026-02-09.md
+    # ========================================================================
+    local stacked_count
+    stacked_count=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null | wc -l)
+    if [ "$stacked_count" -gt 1 ]; then
+        echo "[WARN] ⚠ Stacked mounts detected at ${BACKUP_MNT}!"
+        echo "[WARN] $stacked_count devices mounted on same point:"
+        findmnt -rn -o SOURCE,FSTYPE,OPTIONS -M "${BACKUP_MNT}" 2>/dev/null | sed 's/^/[WARN]   /'
+        echo "[WARN] Likely cause: systemd automount conflict"
+        echo "[WARN] Attempting to unmount all layers..."
+        
+        set +e
+        safe_unmount "${BACKUP_MNT}"
+        local stack_unmount_result=$?
+        set -e
+        
+        if [ $stack_unmount_result -ne 0 ]; then
+            echo "[ERROR] Cannot resolve stacked mounts"
+            echo "[ERROR] Manual fix: sudo umount -l ${BACKUP_MNT} (repeat until clean)"
+            return 1
+        fi
+        echo "[05] ✓ Stacked mounts resolved"
+        sleep 2
+    fi
     
     # ========================================================================
     # Phase 1: Check current mount state

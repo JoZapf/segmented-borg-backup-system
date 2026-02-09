@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.8.3
+# @version 2.9.0
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
+# @changed 2026-02-09 - Version 2.9.0: Fixed execution order - mount before PRE segments
 # @changed 2026-02-04 - Version 2.8.3: Mount/unmount error recovery with process safety
 # @changed 2026-01-26 - Version 2.8.2: Fixed stacked mounts via direct mount (no automount)
 # @changed 2026-01-25 - Version 2.8.1: Mount-point protection and validation enhancements
@@ -84,14 +85,22 @@ set +a
 # Can be overridden in profile config
 PRE_BACKUP_SEGMENTS=(${PRE_BACKUP_SEGMENTS[@]:-})
 
-# Main backup segments - Part 1 (up to and including backup creation)
-MAIN_SEGMENTS_PART1=(
+# Early segments: Hardware preparation and mount (MUST run before PRE-BACKUP)
+# These establish the backup target filesystem that PRE segments may need.
+# @changed 2026-02-09 - Extracted from MAIN_SEGMENTS_PART1 to fix execution order:
+#   PRE segments (e.g. pre_01 DB dump) need TARGET_DIR mounted, but previously
+#   ran BEFORE mount segment 05. See docs/fehleranalyse_2026-02-09.md
+EARLY_SEGMENTS=(
   "01_validate_config.sh"
   "02_init_logging.sh"
   "03_shelly_power_on.sh"
   "04_wait_device.sh"
   "05_mount_backup.sh"
   "06_validate_mount.sh"
+)
+
+# Main backup segments - Part 1 (Borg operations after mount + pre-backup)
+MAIN_SEGMENTS_PART1=(
   "07_init_borg_repo.sh"
   "08_borg_backup.sh"
 )
@@ -187,6 +196,30 @@ echo "Started: $(date -Iseconds)"
 echo "==============================================================================="
 echo ""
 
+# Execute early segments (hardware + mount - required before PRE-BACKUP)
+# @changed 2026-02-09 - New phase: ensures backup target is mounted before
+#   profile-specific PRE segments access TARGET_DIR
+for segment in "${EARLY_SEGMENTS[@]}"; do
+  echo ""
+  if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
+    echo "[ERROR] Segment not found or not executable: ${segment}"
+    exit 1
+  fi
+  
+  if ! "${SEGMENTS_DIR}/${segment}"; then
+    echo ""
+    echo "[ERROR] Segment failed: ${segment}"
+    echo "[ERROR] Aborting backup process"
+    exit 1
+  fi
+done
+
+echo ""
+echo "==============================================================================="
+echo "  HARDWARE READY - BACKUP TARGET MOUNTED"
+echo "==============================================================================="
+echo ""
+
 # Execute pre-backup segments (profile-specific)
 if [ ${#PRE_BACKUP_SEGMENTS[@]} -gt 0 ]; then
   echo "==============================================================================="
@@ -215,7 +248,7 @@ if [ ${#PRE_BACKUP_SEGMENTS[@]} -gt 0 ]; then
   echo ""
 fi
 
-# Execute main segments - Part 1 (up to backup creation)
+# Execute main segments - Part 1 (Borg init + backup creation)
 for segment in "${MAIN_SEGMENTS_PART1[@]}"; do
   echo ""
   if [ ! -x "${SEGMENTS_DIR}/${segment}" ]; then
