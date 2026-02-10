@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # main.sh
-# @version 2.9.0
+# @version 2.9.1
 # @description Main orchestrator with centralized secrets management
 # @author Jo Zapf
+# @changed 2026-02-10 - Version 2.9.1: Fixed root-FS bind mount detection in segment 05
 # @changed 2026-02-09 - Version 2.9.0: Fixed execution order - mount before PRE segments
 # @changed 2026-02-04 - Version 2.8.3: Mount/unmount error recovery with process safety
 # @changed 2026-01-26 - Version 2.8.2: Fixed stacked mounts via direct mount (no automount)

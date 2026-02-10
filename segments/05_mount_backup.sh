@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 2.2.0
+# @version 2.3.0
 # @description Mounts backup device with robust error recovery
 # @author Jo Zapf
+# @changed 2026-02-10 - Fixed root-FS detection (bind mount subpath), lazy unmount loop
 # @changed 2026-02-09 - Added root-FS detection in safe_unmount + stacked mount detection
 # @changed 2026-02-04 - Added multi-stage error recovery (backward compatible)
 # @requires BACKUP_MNT, TARGET_DIR, BACKUP_UUID, BACKUP_DEV
@@ -150,13 +151,16 @@ safe_unmount() {
     # ========================================================================
     local mounted_source
     mounted_source=$(findmnt -rn -o SOURCE -M "$mount_point" 2>/dev/null | head -1 || echo "")
+    # Strip bind mount subpath: /dev/nvme1n1p2[/mnt/extern_backup] → /dev/nvme1n1p2
+    local mounted_source_clean="${mounted_source%%\[*}"
     local root_source
     root_source=$(findmnt -rn -o SOURCE -M "/" 2>/dev/null || echo "")
+    local root_source_clean="${root_source%%\[*}"
     
-    if [ -n "$mounted_source" ] && [ -n "$root_source" ] && [ "$mounted_source" = "$root_source" ]; then
+    if [ -n "$mounted_source_clean" ] && [ -n "$root_source_clean" ] && [ "$mounted_source_clean" = "$root_source_clean" ]; then
         echo ""
         echo "[ERROR] ⛔ ROOT FILESYSTEM is mounted at $mount_point!"
-        echo "[ERROR] Mounted: $mounted_source (same as /)"
+        echo "[ERROR] Mounted: $mounted_source (same device as /: $root_source)"
         echo "[ERROR] This is a systemd automount misconfiguration."
         echo "[ERROR] Skipping process analysis (would list ALL system processes)."
         echo ""
@@ -350,19 +354,53 @@ validate_and_mount() {
         echo "[WARN] $stacked_count devices mounted on same point:"
         findmnt -rn -o SOURCE,FSTYPE,OPTIONS -M "${BACKUP_MNT}" 2>/dev/null | sed 's/^/[WARN]   /'
         echo "[WARN] Likely cause: systemd automount conflict"
-        echo "[WARN] Attempting to unmount all layers..."
+        echo "[WARN] Resolving stacked mounts with lazy unmount loop..."
         
+        # @changed 2026-02-10 - Use targeted lazy unmount loop instead of safe_unmount
+        #   safe_unmount fails when root-FS is in the stack (all processes appear as blockers)
+        #   Lazy unmount peels off layers safely; kernel cleans up references
+        local max_attempts=10
+        local attempt=0
         set +e
-        safe_unmount "${BACKUP_MNT}"
-        local stack_unmount_result=$?
+        while [ $attempt -lt $max_attempts ]; do
+            stacked_count=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null | wc -l)
+            if [ "$stacked_count" -le 1 ]; then
+                break
+            fi
+            attempt=$((attempt + 1))
+            echo "[05] Lazy unmount attempt $attempt/$max_attempts ($stacked_count layers remaining)..."
+            umount -l "${BACKUP_MNT}" 2>/dev/null
+            sleep 1
+        done
         set -e
         
-        if [ $stack_unmount_result -ne 0 ]; then
-            echo "[ERROR] Cannot resolve stacked mounts"
+        # Check result
+        stacked_count=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null | wc -l)
+        if [ "$stacked_count" -gt 1 ]; then
+            echo "[ERROR] Cannot resolve stacked mounts after $max_attempts attempts"
+            echo "[ERROR] Remaining layers:"
+            findmnt -rn -o SOURCE,FSTYPE -M "${BACKUP_MNT}" 2>/dev/null | sed 's/^/[ERROR]   /'
             echo "[ERROR] Manual fix: sudo umount -l ${BACKUP_MNT} (repeat until clean)"
             return 1
         fi
-        echo "[05] ✓ Stacked mounts resolved"
+        
+        if [ "$stacked_count" -eq 1 ]; then
+            # One layer left - check if it's the correct device or root FS
+            local remaining_source
+            remaining_source=$(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null || echo "")
+            local remaining_clean="${remaining_source%%\[*}"
+            local root_dev
+            root_dev=$(findmnt -rn -o SOURCE -M "/" 2>/dev/null || echo "")
+            local root_dev_clean="${root_dev%%\[*}"
+            
+            if [ "$remaining_clean" = "$root_dev_clean" ]; then
+                echo "[WARN] Last remaining layer is root filesystem - removing..."
+                umount -l "${BACKUP_MNT}" 2>/dev/null || true
+                sleep 1
+            fi
+        fi
+        
+        echo "[05] ✓ Stacked mounts resolved ($(findmnt -rn -o SOURCE -M "${BACKUP_MNT}" 2>/dev/null | wc -l) layer(s) remaining)"
         sleep 2
     fi
     
