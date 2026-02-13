@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 2.3.0
+# @version 2.4.0
 # @description Mounts backup device with robust error recovery
 # @author Jo Zapf
+# @changed 2026-02-13 - Fixed mkdir ordering: TARGET_DIR created after mount, not before
 # @changed 2026-02-10 - Fixed root-FS detection (bind mount subpath), lazy unmount loop
 # @changed 2026-02-09 - Added root-FS detection in safe_unmount + stacked mount detection
 # @changed 2026-02-04 - Added multi-stage error recovery (backward compatible)
@@ -583,8 +584,8 @@ validate_and_mount() {
 # MAIN LOGIC
 # ============================================================================
 
-# Create mount directories if they don't exist
-mkdir -p "${BACKUP_MNT}" "${TARGET_DIR}"
+# Create mount point directory (must exist before mount)
+mkdir -p "${BACKUP_MNT}"
 
 # Execute robust mount with comprehensive error recovery
 if ! validate_and_mount; then
@@ -637,6 +638,10 @@ if ! validate_and_mount; then
     echo "==============================================================================="
     exit 1
 fi
+
+# Create target directory on mounted device (must happen AFTER mount)
+# Before v2.4.0 this was done before mount, causing EPERM on root-FS
+mkdir -p "${TARGET_DIR}"
 
 # Success - backup will continue
 exit 0

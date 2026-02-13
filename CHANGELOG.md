@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-02-13
+
+### Fixed
+
+- **CRITICAL**: Fixed `mkdir` ordering in `05_mount_backup.sh` - TARGET_DIR was created before device mount
+  - **Issue (dev-data)**: `mkdir -p "${TARGET_DIR}"` failed with `Vorgang nicht zulässig` (EPERM) because it tried to create the subdirectory on the root filesystem before the backup device was mounted
+  - **Root Cause**: Both `BACKUP_MNT` and `TARGET_DIR` were created in a single `mkdir -p` call before `validate_and_mount()`. When the device wasn't mounted yet, `TARGET_DIR` (a subdirectory on the device) couldn't be created on the root-FS mountpoint
+  - **Solution**: Split into two phases - `mkdir -p "${BACKUP_MNT}"` before mount (mountpoint must exist), `mkdir -p "${TARGET_DIR}"` after successful mount (subdirectory on device)
+
+- **CRITICAL**: Fixed `deploy.sh` missing `main.sh` deployment
+  - **Issue**: All orchestrator fixes since v2.9.0 never reached production - `main.sh` was not in the deploy file list
+  - **Impact**: dev-data backups failed because production still ran v2.8.2 orchestrator (old execution order without EARLY_SEGMENTS)
+  - **Solution**: Added `main.sh` to `deploy_files()`, `set_permissions()`, and `verify_deployment()` in deploy.sh
+
+### Changed
+
+- **segments/05_mount_backup.sh**: v2.3.0 → v2.4.0
+  - Moved `mkdir -p "${TARGET_DIR}"` from before mount to after successful mount
+  - `mkdir -p "${BACKUP_MNT}"` remains before mount (mountpoint must exist for mount command)
+
+- **deploy.sh**: v1.0.0 → v1.1.0
+  - Added `main.sh` to deployment, permission setting, and verification
+
+### Added
+
+- **tools/anonymize-log.sh** v1.1.0: Three-phase log anonymization for public GitHub sharing
+  - Phase 1: Bulk stripping (Borg progress, SQL dump rows, container log excerpts)
+  - Phase 2: Automatic secrets.env value replacement with `${VAR}` reference resolution
+  - Phase 3: Regex patterns (hostname variants, IPs, serial numbers, hashes, container IDs)
+
+- **tools/backup-mount-toggle.sh** v1.0.0: Desktop GUI for manual mount/unmount of backup drives
+  - Zenity-based toggle interface with mount status display
+  - PolicyKit authentication (no persistent sudo required)
+  - UUID-based device validation
+
+- **tools/backup-mount-toggle.desktop**: GNOME desktop shortcut for mount toggle
+
+- **tools/backup-mount-toggle.readme.md**: Setup and usage documentation
+
+### Infrastructure (Production System)
+
+- **systemd**: Masked `mnt-system_backup.automount` (previously only disabled)
+- **Hotfix**: Manually deployed `main.sh` v2.9.1 to `/opt/backup-system/`
+
+### Documentation
+
+- **docs/fehleranalyse_2026-02-11.md**: Root cause analysis for deploy.sh missing main.sh
+
+---
+
 ## [2.9.0] - 2026-02-09
 
 ### Fixed

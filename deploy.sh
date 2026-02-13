@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # deploy.sh
-# @version 1.0.0
+# @version 1.1.0
 # @description Deploy backup system from development directory to production
 # @author Jo Zapf
+# @changed 2026-02-11 - Fixed: main.sh was missing from deployment (critical bug)
 # @date 2026-01-22
 #
 # Purpose:
@@ -71,7 +72,11 @@ deploy_files() {
     # Create target directory if it doesn't exist
     mkdir -p "$TARGET_DIR"
     
-    # Copy main script
+    # Copy main scripts
+    log_info "Copying main.sh..."
+    cp -v "$SOURCE_DIR/main.sh" "$TARGET_DIR/"
+    chmod +x "$TARGET_DIR/main.sh"
+    
     log_info "Copying run-backup.sh..."
     cp -v "$SOURCE_DIR/run-backup.sh" "$TARGET_DIR/"
     chmod +x "$TARGET_DIR/run-backup.sh"
@@ -136,7 +141,8 @@ deploy_files() {
 set_permissions() {
     log_info "Setting permissions..."
     
-    # Main script
+    # Main scripts
+    chmod 750 "$TARGET_DIR/main.sh"
     chmod 750 "$TARGET_DIR/run-backup.sh"
     
     # Segments
@@ -202,7 +208,12 @@ verify_deployment() {
     
     local errors=0
     
-    # Check main script
+    # Check main scripts
+    if [ ! -x "$TARGET_DIR/main.sh" ]; then
+        log_error "main.sh not found or not executable"
+        ((errors++))
+    fi
+    
     if [ ! -x "$TARGET_DIR/run-backup.sh" ]; then
         log_error "run-backup.sh not found or not executable"
         ((errors++))
