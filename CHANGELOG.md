@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Root Cause**: Both `BACKUP_MNT` and `TARGET_DIR` were created in a single `mkdir -p` call before `validate_and_mount()`. When the device wasn't mounted yet, `TARGET_DIR` (a subdirectory on the device) couldn't be created on the root-FS mountpoint
   - **Solution**: Split into two phases - `mkdir -p "${BACKUP_MNT}"` before mount (mountpoint must exist), `mkdir -p "${TARGET_DIR}"` after successful mount (subdirectory on device)
 
+- **CRITICAL**: Fixed fstab-dependent mount failing after automount masking
+  - **Issue (dev-data)**: `mount /mnt/system_backup` failed with `konnte nicht in /etc/fstab gefunden werden` because masking automount units also removed the fstab-based mount path
+  - **Root Cause**: Segment 05 used bare `mount ${BACKUP_MNT}` which requires a matching fstab entry. After masking automounts and cleaning fstab, no entry existed for `/mnt/system_backup`
+  - **Solution**: Replaced with explicit `mount -t ext4 -o noatime UUID=${BACKUP_UUID} ${BACKUP_MNT}` - fully self-contained, works for both profiles without any fstab dependency
+
 - **CRITICAL**: Fixed `deploy.sh` missing `main.sh` deployment
   - **Issue**: All orchestrator fixes since v2.9.0 never reached production - `main.sh` was not in the deploy file list
   - **Impact**: dev-data backups failed because production still ran v2.8.2 orchestrator (old execution order without EARLY_SEGMENTS)
@@ -21,8 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **segments/05_mount_backup.sh**: v2.3.0 → v2.4.0
-  - Moved `mkdir -p "${TARGET_DIR}"` from before mount to after successful mount
+- **segments/05_mount_backup.sh**: v2.3.0 → v2.5.0
+  - **v2.5.0**: Explicit UUID-based mount (`mount -t ext4 -o noatime UUID=...`) replaces fstab-dependent `mount ${BACKUP_MNT}`. System is now fully self-contained and portable - no fstab entries required for either profile
+  - **v2.4.0**: Moved `mkdir -p "${TARGET_DIR}"` from before mount to after successful mount
   - `mkdir -p "${BACKUP_MNT}"` remains before mount (mountpoint must exist for mount command)
 
 - **deploy.sh**: v1.0.0 → v1.1.0

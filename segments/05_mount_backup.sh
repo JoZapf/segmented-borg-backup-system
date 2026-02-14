@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # segments/05_mount_backup.sh
-# @version 2.4.0
+# @version 2.5.0
 # @description Mounts backup device with robust error recovery
 # @author Jo Zapf
+# @changed 2026-02-14 - Explicit mount via UUID (fstab-independent, portable)
 # @changed 2026-02-13 - Fixed mkdir ordering: TARGET_DIR created after mount, not before
 # @changed 2026-02-10 - Fixed root-FS detection (bind mount subpath), lazy unmount loop
 # @changed 2026-02-09 - Added root-FS detection in safe_unmount + stacked mount detection
@@ -482,15 +483,22 @@ validate_and_mount() {
     fi
     
     # ========================================================================
-    # Phase 3: Attempt mount
+    # Phase 3: Attempt mount (explicit, fstab-independent)
+    # @changed 2026-02-14 - Use explicit mount with UUID instead of fstab
+    #   Previous: mount "${BACKUP_MNT}" (requires fstab entry)
+    #   Now: mount -t ext4 -o noatime UUID=... ${BACKUP_MNT} (self-contained)
+    #   Reason: Masked automount units + removed fstab entries caused
+    #   "konnte nicht in /etc/fstab gefunden werden" on dev-data profile
     # ========================================================================
     
-    echo "[05] Mounting device via fstab..."
+    echo "[05] Mounting device directly (UUID-based, no fstab dependency)..."
+    echo "[05] UUID: ${BACKUP_UUID}"
+    echo "[05] Target: ${BACKUP_MNT}"
     
     # Disable errexit for mount attempt - we handle errors manually
     set +e
     local mount_output
-    mount_output=$(mount "${BACKUP_MNT}" 2>&1)
+    mount_output=$(mount -t ext4 -o defaults,noatime "UUID=${BACKUP_UUID}" "${BACKUP_MNT}" 2>&1)
     local mount_result=$?
     set -e
     
@@ -519,7 +527,7 @@ validate_and_mount() {
             fi
         else
             echo "[ERROR] Mount reports 'already mounted' but device not found in mount table"
-            echo "[ERROR] Try: sudo systemctl daemon-reload && mount -a"
+            echo "[ERROR] Try: sudo systemctl daemon-reload"
             return 2
         fi
     else
@@ -529,10 +537,13 @@ validate_and_mount() {
         # Provide debugging information
         echo ""
         echo "[DEBUG] Current filesystem status:"
-        mount | grep -E "(extern_backup|sdc)" || echo "  No relevant mounts found"
+        findmnt -rn -M "${BACKUP_MNT}" 2>/dev/null || echo "  Nothing mounted at ${BACKUP_MNT}"
         echo ""
         echo "[DEBUG] Device information:"
         lsblk "$BACKUP_DEV" 2>&1 || echo "  Device not found"
+        echo ""
+        echo "[DEBUG] UUID lookup:"
+        blkid -U "$BACKUP_UUID" 2>&1 || echo "  UUID not found on any device"
         
         return 1
     fi
@@ -563,19 +574,10 @@ validate_and_mount() {
         return 2
     fi
     
-    # Final check: Verify target directory is accessible
-    if [ ! -d "$TARGET_DIR" ]; then
-        echo "[ERROR] Target directory not accessible: $TARGET_DIR"
-        return 2
-    fi
-    
     echo "[05] ✓ Backup device mounted and validated successfully"
     echo "[05] Device: $mounted_dev"
     echo "[05] Mount point: ${BACKUP_MNT}"
     echo "[05] UUID: $mounted_uuid"
-    echo "[05] Target: $TARGET_DIR"
-    echo ""
-    echo "[05] ℹ️  Note: Backup will now proceed with remaining segments"
     
     return 0
 }
@@ -601,9 +603,8 @@ if ! validate_and_mount; then
     echo "  1. Device not available or disconnected"
     echo "  2. Filesystem errors (needs fsck)"
     echo "  3. Permissions issue"
-    echo "  4. fstab misconfiguration"
-    echo "  5. Systemd mount unit conflict"
-    echo "  6. Critical processes blocking unmount (see above)"
+    echo "  4. Systemd mount unit conflict"
+    echo "  5. Critical processes blocking unmount (see above)"
     echo ""
     echo "Manual recovery steps:"
     echo ""
@@ -616,8 +617,6 @@ if ! validate_and_mount; then
     echo "     # Should show: UUID=\"$BACKUP_UUID\""
     echo ""
     echo "  3. Force unmount if needed:"
-    echo "     sudo systemctl stop mnt-extern_backup.automount"
-    echo "     sudo systemctl stop mnt-extern_backup.mount"
     echo "     sudo umount -l ${BACKUP_MNT}"
     echo ""
     echo "  4. Check filesystem integrity:"
@@ -625,13 +624,10 @@ if ! validate_and_mount; then
     echo "     sudo fsck -y $BACKUP_DEV  # Repair if needed"
     echo ""
     echo "  5. Test manual mount:"
-    echo "     sudo mount ${BACKUP_MNT}"
+    echo "     sudo mount -t ext4 -o noatime UUID=${BACKUP_UUID} ${BACKUP_MNT}"
     echo "     findmnt ${BACKUP_MNT}"
     echo ""
-    echo "  6. Verify fstab:"
-    echo "     grep extern_backup /etc/fstab"
-    echo ""
-    echo "  7. Reload and retry:"
+    echo "  6. Reload and retry:"
     echo "     sudo systemctl daemon-reload"
     echo "     sudo /opt/backup-system/run-backup.sh $BACKUP_PROFILE"
     echo ""
