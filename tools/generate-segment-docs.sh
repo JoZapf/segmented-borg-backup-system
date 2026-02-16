@@ -14,7 +14,8 @@ set -u
 
 # Determine script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$(dirname "${SCRIPT_DIR}")")"
+# PROJECT_ROOT is one level up from tools/
+PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 CONFIG_FILE="${PROJECT_ROOT}/config/secrets.env"
 
 # Colors for output

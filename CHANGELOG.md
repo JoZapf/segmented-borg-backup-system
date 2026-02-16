@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.9.2] - 2026-02-16
 
+### Fixed
+
+- **tools/generate-segment-docs.sh**: Fixed incorrect project root calculation
+  - **Issue**: Script calculated PROJECT_ROOT as two levels up from script location (`dirname dirname`), resolving to `/e/Projects` instead of `/e/Projects/linux-backup-system`
+  - **Symptom**: `[ERROR] Configuration file not found: /e/Projects/config/secrets.env`
+  - **Root Cause**: Script works from `tools/` directory, so only one `dirname` needed (not two)
+  - **Solution**: Changed to single `dirname "${SCRIPT_DIR}"` which correctly resolves to project root
+  - **Impact**: Configuration file now correctly loaded from `${PROJECT_ROOT}/config/secrets.env`
+
 ### Added
 
 - **tools/generate-segment-docs.sh**: v1.1.0 → v1.3.0 (configuration-driven documentation generator)
