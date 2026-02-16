@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-02-16
+
+### Added
+
+- **tools/generate-segment-docs.sh**: v1.1.0 → v1.3.0 (configuration-driven documentation generator)
+  - **v1.3.0**: Configuration-driven path management via `config/secrets.env` with dynamic project root detection
+  - **v1.2.0**: Initial refactor with relative path resolution (../segments, ../docs/api)
+  - **New**: Configuration-driven path management via `config/secrets.env`
+  - **New**: Dynamic project root detection (works from any execution location)
+  - **New**: Path validation at startup with informative error messages
+  - **New**: Configuration verification before generating documentation
+  - **Benefits**:
+    - Eliminates hardcoded paths in script
+    - Single source of truth for paths (centralized in secrets.env)
+    - Portable across environments (Windows, Linux, macOS)
+    - Better debugging with startup diagnostics
+  - **Configuration Variables** (in `config/secrets.env`):
+    - `DOCS_SEGMENTS_DIR`: Segments directory (default: "segments")
+    - `DOCS_API_OUTPUT_DIR`: API docs output directory (default: "docs/api")
+
+- **tools/generate-segment-docs.runbook.md**: v1.0.0 (comprehensive usage documentation)
+  - Platform-specific execution guides (Windows PowerShell, Linux Terminal)
+  - Configuration verification procedures
+  - Troubleshooting section with solutions for common errors
+  - Automation patterns (GitHub Actions, Git hooks, cron)
+  - Configuration deep-dive explaining path resolution
+  - Exit codes and performance characteristics
+
+- **config/secrets.env.example**: Documentation paths section
+  - Added `DOCS_SEGMENTS_DIR` and `DOCS_API_OUTPUT_DIR` variables
+  - Documented in consistent style with existing configuration
+  - Includes default values, usage notes, and generated file descriptions
+  - Matches project-wide section header format
+
+### Changed
+
+- **config/secrets.env**: v1.0.0 → v1.0.1
+  - Added DOCUMENTATION PATHS section (tools/generate-segment-docs.sh)
+  - New variables: DOCS_SEGMENTS_DIR, DOCS_API_OUTPUT_DIR
+
+### Technical Details
+
+#### Configuration Management (generate-segment-docs.sh v1.3.0)
+
+**Dynamic Project Root Resolution:**
+```bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$(dirname "${SCRIPT_DIR}")")"
+CONFIG_FILE="${PROJECT_ROOT}/config/secrets.env"
+```
+
+**Configuration Validation:**
+- File existence check with error guidance
+- Required variable presence validation
+- Path existence verification
+- Informative error messages suggesting fixes
+
+**Path Resolution:**
+- All paths resolved relative to project root
+- Works from any execution location (`tools/`, project root, nested directories)
+- Cross-platform compatible (no hardcoded path separators)
+
+#### Usage Examples
+
+**Windows (PowerShell via Git Bash):**
+```powershell
+cd E:\Projects\linux-backup-system\tools
+bash generate-segment-docs.sh
+```
+
+**Linux (Terminal):**
+```bash
+cd ~/Projects/linux-backup-system
+./tools/generate-segment-docs.sh
+```
+
+---
+
 ## [2.9.1] - 2026-02-13
 
 ### Fixed
